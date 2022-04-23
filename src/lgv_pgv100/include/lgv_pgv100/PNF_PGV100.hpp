@@ -27,7 +27,7 @@
 //===========================================================================
 //	Local Variables
 //===========================================================================
-typedef struct PCVSENSORVAL
+typedef struct PGVSENSORVAL
 {
      double  XPS;                   // ���� X ��ǥ
      double  YPS;                   // ���� Y ��ǥ 

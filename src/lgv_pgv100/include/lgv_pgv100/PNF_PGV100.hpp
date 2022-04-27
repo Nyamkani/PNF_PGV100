@@ -67,33 +67,33 @@ typedef struct PGVSENSORVAL
 //	functions
 //===========================================================================
 
-void POS_CommTimer_Tick();
-void POS_CommTimer_Reset(unsigned int nTime);
-int POS_CommTimer_IsExpired();
+// void POS_CommTimer_Tick();
+// void POS_CommTimer_Reset(unsigned int nTime);
+// int POS_CommTimer_IsExpired();
 
-void POS_INIT_VALUES(PosSensorVal* (PCVRSTValue));
-void POS_BUFFER_INIT(PosSensorVal* (PCVRSTValue));
+// void POS_INIT_VALUES(PosSensorVal* (PCVRSTValue));
+// void POS_BUFFER_INIT(PosSensorVal* (PCVRSTValue));
 
-void POS_REQUEST(PosSensorVal* (PCVRSTValue));
-void POS_DIR_REQUEST(PosSensorVal* (PCVRSTValue));
-void POS_COLOR_REQUEST(PosSensorVal* (PCVRSTValue));
-void POS_REQUEST_SELECTOR(PosSensorVal* (PCVRSTValue));
+// void POS_REQUEST(PosSensorVal* (PCVRSTValue));
+// void POS_DIR_REQUEST(PosSensorVal* (PCVRSTValue));
+// void POS_COLOR_REQUEST(PosSensorVal* (PCVRSTValue));
+// void POS_REQUEST_SELECTOR(PosSensorVal* (PCVRSTValue));
 
-int POS_TAG_DETECT(PosSensorVal* (PCVRSTValue));
-int32_t POS_GET_TAG_INFO(PosSensorVal* (PCVRSTValue));
-int16_t POS_GET_ANGLE_INFO(PosSensorVal* (PCVRSTValue));
-double POS_GET_XPOS_INFO(PosSensorVal* (PCVRSTValue));
-double POS_GET_YPOS_INFO(PosSensorVal* (PCVRSTValue));
-int32_t POS_GET_ERR_INFO();
-u_int16_t POS_GET_INFO(PosSensorVal* (PCVRSTValue)); 
+// int POS_TAG_DETECT(PosSensorVal* (PCVRSTValue));
+// int32_t POS_GET_TAG_INFO(PosSensorVal* (PCVRSTValue));
+// int16_t POS_GET_ANGLE_INFO(PosSensorVal* (PCVRSTValue));
+// double POS_GET_XPOS_INFO(PosSensorVal* (PCVRSTValue));
+// double POS_GET_YPOS_INFO(PosSensorVal* (PCVRSTValue));
+// int32_t POS_GET_ERR_INFO();
+// u_int16_t POS_GET_INFO(PosSensorVal* (PCVRSTValue)); 
 
-void POS_DIR_CHK(PosSensorVal* (PCVRSTValue));
-void POS_COLOR_CHK(PosSensorVal* (PCVRSTValue));
+// void POS_DIR_CHK(PosSensorVal* (PCVRSTValue));
+// void POS_COLOR_CHK(PosSensorVal* (PCVRSTValue));
 
-u_int16_t POS_CHKSUM_DATA();
-u_int16_t POS_ERR_CHK(u16 *ChkSum_Data);
-u_int16_t POS_DATA_ANALYSIS(PosSensorVal* (PCVRSTValue));
-void POS_ERR_FILTER(PosSensorVal* (PCVRSTValue), u16 *state, u16 filterNum);
+// u_int16_t POS_CHKSUM_DATA();
+// u_int16_t POS_ERR_CHK(u16 *ChkSum_Data);
+// u_int16_t POS_DATA_ANALYSIS(PosSensorVal* (PCVRSTValue));
+// void POS_ERR_FILTER(PosSensorVal* (PCVRSTValue), u16 *state, u16 filterNum);
 
-u_int16_t POS_SENSOR_RECEIVE(PosSensorVal* (PCVRSTValue));
-void POSTION_SENSOR_OPERATION(PosSensorVal* (PCVRSTValue));
+// u_int16_t POS_SENSOR_RECEIVE(PosSensorVal* (PCVRSTValue));
+// void POSTION_SENSOR_OPERATION(PosSensorVal* (PCVRSTValue));

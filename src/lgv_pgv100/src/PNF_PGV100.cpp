@@ -3,6 +3,18 @@
 #include <sstream>
 #include <deque>
 #include <thread>
+#include <chrono>
+
+// C library headers
+#include <stdio.h>
+#include <string.h>
+
+// Linux headers
+#include <fcntl.h> // Contains file controls like O_RDWR
+#include <errno.h> // Error integer and strerror() function
+#include <termios.h> // Contains POSIX terminal control definitions
+#include <unistd.h> // write(), read(), close()
+
 
 using std::thread;
 
@@ -10,24 +22,26 @@ using std::thread;
 #include "rclcpp/rclcpp.hpp"
 #include "PNF_PGV100.hpp"
 
+#define POS_PGV100_TOTAL_BYTES 21
+#define CMD_NULL 0X00
+
+
+
 namespace Nyamkani
 {
 
     struct Params
     {
 
-
-
-
     };
-
 
     enum State
     {
-        NotInited = 0,
-        Inited = 1,
-        BufferInited = 2,
-        Working = 3,
+        Init = 0,
+        BufferInit = 1,
+        Request = 2,
+        WaitAnswer = 3,
+        Analysis = 4,
 
         Completed = 10,
         Error = 11,
@@ -35,67 +49,190 @@ namespace Nyamkani
     
     enum ErrCode 
     {
-        Good = 0x00,
-        ERR_01 = 100
-
-        
+        Good = 0x0000,
+        Warning = 0x0001,
+        ERR_01 = 0x0002,   //Prevent from spiking position value 
+        ERR_02 = 0x0002,   //Prevent from spiking position value 
+        ERR_03 = 0x0004,   //Prevent from having a no dirction setting
+        ERR_04 = 0x0008,   //Prevent from having a no color setting
+        ERR_05 = 0x0010,   //Prevent from having condtions in Out of Range
+        ERR_06 = 0x0020,   //Prevent from having a no postion
+        ERR_07 = 0x0040,   //Prevent from comm. errors(Time out) 
+        ERR_08 = 0x0080,   //Prevent from having chk_sum error
+        ERR_09 = 0x0100,   //Reserved
+        ERR_10 = 0x0200,   //Reserved
+        ERR_11 = 0x0400,   //Reserved
+        ERR_12 = 0x0800,   //Reserved
+        ERR_13 = 0x1000,   //Reserved
+        ERR_14 = 0x2000,   //Reserved
+        ERR_15 = 0x4000,   //Reserved
+        ERR_16 = 0x8000,   //Reserved
     };
 
-    typedef void DATA_RECEIVE_HANDLER*(u16* ptr)
+    enum PGV_Cmd
+    {
+            PGV100_Straight_Request = 0,                //for Reqeusting  changing  straight  direction
+            PGV100_Left_Request,                        //for Reqeusting  changing  left  direction
+            PGV100_Right_Request,                       //for Reqeusting  changing  right direction
+
+            PGV100_Red_Request,                         //for Reqeusting  changing  RED direction
+            PGV100_Green_Request,                       //for Reqeusting  changing  GREEN direction
+            PGV100_Blue_Request,                        //for Reqeusting  changing  BLUE direction
+
+            PGV100_Pos_Request,                         //for Reqeusting messages    from head to receive POSITON 
+
+    };
 
     class MODULE_PGV100
     {
         private:
-            
+            //---------------------------------------------------------------------------pgv100 output. declation
+            //to see useful values
             double  XPS;               
-            double  YPS;                
+            double  YPS;        
+            u_int16_t TagNo;
+            u_int16_t DirOld;
+            u_int16_t ColorOld;
+            u_int16_t SensorErr;
+
+            //---------------------------------------------------------------------------pgv100 parameters. declation
+            //params
             double  X_OFFSET;
             double  Y_OFFSET;
             int16_t  ANGLE;
 
-            u_int16_t TagNo;
-
+            //---------------------------------------------------------------------------pgv100 working option. declation
             u_int16_t Dir; //left, right, straight   - 1,2,3 
-            u_int16_t DirOld;
-
             u_int16_t Color;
-            u_int16_t ColorOld;
 
-            u_int16_t SensorErr;
+            u_int16_t POS_BUF[POS_PGV100_TOTAL_BYTES] = { 0 };      // Response POS data buffer
 
-
-            u16 POS_BUF[POS_PGV100_TOTAL_BYTES] = { 0 };      // Response POS data buffer
-
-            u16 POS_BUF_PTR = 0;                 //
-            u16 POS_SEQUENCE = 0;        // response result check
+            u_int16_t POS_BUF_PTR = 0;                 //
+            u_int16_t POS_SEQUENCE = 0;        // response result check
 
             int32_t POS_AREA_MAX = 10000;                                          // PCV센서 범위 Maximum(mm)
             int32_t POS_AREA_MIN = (-100);   // PCV센서 범위 Minimum 
 
             //To check vaild Condition
-            u16 NomCnd_Cnt = 0;
-            u16 ErrCnd_Cnt = 0;
+            u_int16_t NomCnd_Cnt = 0;
+            u_int16_t ErrCnd_Cnt = 0;
             
-           
-            DATA_RECEIVE_HANDLER onDataReceived;
-            State state = NotInited;
-            thread executer;
-           
-            bool LoadParameter(char* path)
-            {
-                if (true)
-                {
-                    throw std::exception("File is not exist");
-                }
-                else
-                {
 
-                }
+            //---------------------------------------------------------------------------485 Comm. declation
+            //485 comm
+            int serial_port;
+            // Create new termios struct, we call it 'tty' for convention
+            struct termios tty;
+
+            //DATA_RECEIVE_HANDLER onDataReceived;
+            State state = Init;
+            thread executer;
+
+
+            //---------------------------------------------------------------------------485 Comm. cmds declation
+            //Values for request cmd
+            std::vector<std::string> RequestCmd;
+
+            void InitCmd()
+            {
+                RequestCmd[PGV100_Straight_Request] = "0xEC0x13";
+                RequestCmd[PGV100_Left_Request] = "0xEC0x13";
+                RequestCmd[PGV100_Right_Request] = "0xE40x1B";
+                RequestCmd[PGV100_Red_Request] = "0x900x6F";
+                RequestCmd[PGV100_Green_Request] = "0x880x7";
+                RequestCmd[PGV100_Blue_Request] = "0xC40x3B";
+                RequestCmd[PGV100_Pos_Request] = "0xC80x37";
+            }
+            
+            //bool LoadParameter(char* path)
+            //{
+                // if (true)
+                // {
+                //     //throw std::exception("File is not exist");
+                // }
+                // else
+                // {
+
+                // }
 
    
-            }
+            //}
+            int Init485Comm()
+            {
+                // Open the serial port. Change device path as needed (currently set to an standard FTDI USB-UART cable type device)
+                serial_port = open("/dev/ttyUSB0", O_RDWR);
 
-            
+                // Create new termios struct, we call it 'tty' for convention
+                //struct termios tty;
+
+                // Read in existing settings, and handle any error
+                if(tcgetattr(serial_port, &tty) != 0) {
+                    printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
+                    return 1;
+                }
+
+                tty.c_cflag &= ~PARENB; // Clear parity bit, disabling parity (most common)
+                tty.c_cflag &= ~CSTOPB; // Clear stop field, only one stop bit used in communication (most common)
+                tty.c_cflag &= ~CSIZE; // Clear all bits that set the data size 
+                tty.c_cflag |= CS8; // 8 bits per byte (most common)
+                tty.c_cflag &= ~CRTSCTS; // Disable RTS/CTS hardware flow control (most common)
+                tty.c_cflag |= CREAD | CLOCAL; // Turn on READ &0000 ignore ctrl lines (CLOCAL = 1)
+
+                tty.c_lflag &= ~ICANON;
+                tty.c_lflag &= ~ECHO; // Disable echo
+                tty.c_lflag &= ~ECHOE; // Disable erasure
+                tty.c_lflag &= ~ECHONL; // Disable new-line echo
+                tty.c_lflag &= ~ISIG; // Disable interpretation of INTR, QUIT and SUSP
+                tty.c_iflag &= ~(IXON | IXOFF | IXANY); // Turn off s/w flow ctrl
+                tty.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL); // Disable any special handling of received bytes
+
+                tty.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g. newline chars)
+                tty.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
+                // tty.c_oflag &= ~OXTABS; // Prevent conversion of tabs to spaces (NOT PRESENT ON LINUX)
+                // tty.c_oflag &= ~ONOEOT; // Prevent removal of C-d chars (0x004) in output (NOT PRESENT ON LINUX)
+
+                tty.c_cc[VTIME] = 10;    // Wait for up to 1s (10 deciseconds), returning as soon as any data is received.
+                tty.c_cc[VMIN] = 0;
+
+                // Set in/out baud rate to be 9600
+                cfsetispeed(&tty, B115200);
+                cfsetospeed(&tty, B115200);
+
+                // Save tty settings, also checking for error
+                if (tcsetattr(serial_port, TCSANOW, &tty) != 0) {
+                    printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
+                    return 1;
+                }    
+                //////////////////////////////////////////////////////////////////////////////////////////////////////
+                    // Write to serial port
+                    //unsigned char msg[] = { 'H', 'e', 'l', 'l', 'o', '\r' };
+                    //write(serial_port, msg, sizeof(msg));
+
+                    // Allocate memory for read buffer, set size according to your needs
+                    //char read_buf [256];
+
+                    // Normally you wouldn't do this memset() call, but since we will just receive
+                    // ASCII data for this example, we'll set everything to 0 so we can
+                    // call printf() easily.
+                    //memset(&read_buf, '\0', sizeof(read_buf));
+
+                    // Read bytes. The behaviour of read() (e.g. does it block?,
+                    // how long does it block for?) depends on the configuration
+                    // settings above, specifically VMIN and VTIME
+                    //int num_bytes = read(serial_port, &read_buf, sizeof(read_buf));
+
+                    // // n is the number of bytes read. n may be 0 if no bytes were received, and can also be -1 to signal an error.
+                    // if (num_bytes < 0) {
+                    //     printf("Error reading: %s", strerror(errno));
+                    //     return 1;
+                    // }
+                    //////////////////////////////////////////////////////////////////////////////////////////////////////
+                }
+
+
+
+
+
             void InitValues()
             {
                 XPS = 0;
@@ -117,42 +254,324 @@ namespace Nyamkani
 
             }
 
-            void INIT_BUFFER()
+            void Init_Buffer()
             {
-                u16  i;
+                memset(&POS_BUF, '\0', sizeof(POS_BUF));
+            }
 
-                POS_SEQUENCE = 2;
-                POS_BUF_PTR = 0;
-                for (i = 0; i < (POS_PGV100_TOTAL_BYTES); i++) { POS_BUF[i] = 0; }
-                POS_CommTimer_Reset(POS_TIMEOUT);
+            void POS_REQUEST()
+            {
+                write(serial_port, PGV100_Pos_Request, sizeof(PGV100_Pos_Request));
+            }
+
+            //for following line-tape and Matrix data
+            void DIR_REQUEST()
+            {
+                if(this->Dir==0) this->Dir=3;
+                switch(this->Dir)
+                {            
+                    case 1: write(serial_port, PGV100_Right_Request,sizeof(PGV100_Right_Request)); break;
+                    case 2: write(serial_port, PGV100_Left_Request,sizeof(PGV100_Left_Request)); break;
+                    case 3: write(serial_port, PGV100_Straight_Request,sizeof(PGV100_Straight_Request)); break;
+                    default: break;
+                }
+            }
+
+            //for following Colored tape
+            void COLOR_REQUEST()
+            {
+                switch(this->Color)
+                {
+                    case 1: write(serial_port, PGV100_Red_Request,sizeof(PGV100_Red_Request)); break;
+                    case 2: write(serial_port, PGV100_Green_Request,sizeof(PGV100_Green_Request)); break;
+                    case 3: write(serial_port, PGV100_Blue_Request,sizeof(PGV100_Blue_Request)); break;
+                    default: break;
+                }
+            }
+
+            //for Chk condition and do seperated funcc.
+            void Request_Selector()
+            {
+                this->state = WaitAnswer;
+                if((this->Dir != this->DirOld)||(this->Dir==0)) {DIR_REQUEST();}
+                else if(this->Color != 0) {COLOR_REQUEST();}
+                else {POS_REQUEST();}
+            }
+
+
+            //-------------Sensor Get Infomations(for "POS_GET_INFO" function)
+            int POS_TAG_DETECT()
+            {
+                int result=0;
+                if(POS_BUF[1]&0x40) result=1;
+                return result;
+            }
+
+            int32_t POS_GET_TAG_INFO()
+            {
+                int32_t TagNum=0;
+                (TagNum)=(int32_t)POS_BUF[17];
+                (TagNum)|=(int32_t)POS_BUF[16]<<7;
+                (TagNum)|=(int32_t)POS_BUF[15]<<14;
+                (TagNum)|=(int32_t)POS_BUF[14]<<21;
+                return TagNum;
+            }
+
+            int16_t POS_GET_ANGLE_INFO()
+            {
+                int16_t ANGLE=0;
+                (ANGLE)=(int16_t)POS_BUF[11];
+                (ANGLE)|=(int16_t)POS_BUF[10]<<7;
+                (ANGLE)=(int16_t)(((ANGLE)/10));
+                if((ANGLE)> 180) ANGLE-=360; //makes x-axis zero centered
+                return ANGLE;
+            }
+
+            double POS_GET_XPOS_INFO()
+            {
+                int32_t XPosition_DATA = 0;
+                double XPOS;
+                
+                (XPosition_DATA)=(int32_t)POS_BUF[5];
+                (XPosition_DATA)|=(int32_t)POS_BUF[4]<<7;
+                (XPosition_DATA)|=(int32_t)POS_BUF[3]<<14;
+                (XPosition_DATA)|=(int32_t)(POS_BUF[2]&0x07)<<21;
+                XPOS=(double)(XPosition_DATA/(10000.0f));                   //To make units milimeters to meters
+                
+                //for making X-axis center to zero
+                if(XPOS>=10) XPOS = (double)(XPOS-((double)(pow(2,24)-1)/(10000.0f))-(this->X_OFFSET));
+                else XPOS = (XPOS-(this->X_OFFSET));
+                
+                return XPOS;
+            }
+
+            double POS_GET_YPOS_INFO()
+            {
+                int32_t YPosition_DATA = 0;
+                double YPOS;
+                
+                (YPosition_DATA)=(int32_t)POS_BUF[7];//Y Buf
+                (YPosition_DATA)|=((int32_t)POS_BUF[6])<<7;
+                YPOS=(double)(YPosition_DATA/(10000.0f));              //To make units milimeters to meters
+                        
+                //for making Y-axis center to zero
+                if(YPOS>=0.1) YPOS = (double)(YPOS-((double)(16383.0)/(10000.0f))-(this->Y_OFFSET));
+                else YPOS = (YPOS-(this->Y_OFFSET));
+                
+                return YPOS;
+            }
+
+            int32_t POS_GET_ERR_INFO()
+            {
+                int32_t ERR_DATA = 0;
+                (ERR_DATA)=(int32_t)POS_BUF[5];
+                (ERR_DATA)|=(int32_t)POS_BUF[4]<<7;
+                (ERR_DATA)|=(int32_t)POS_BUF[3]<<14;
+                (ERR_DATA)|=(int32_t)(POS_BUF[2]&0x07)<<21;
+                return ERR_DATA;
+            }
+
+            uint16_t POS_GET_INFO() 
+            {
+                uint16_t state = 0;
+                double POS_X_COORDINATE=0.0f; 
+                double POS_Y_COORDINATE=0.0f;
+                u_int16_t TagNum=0;
+                int16_t ANGLE=0;
+                
+                //--- TAG INFO
+                if(POS_TAG_DETECT()) TagNum = POS_GET_TAG_INFO();       
+                            
+                //--- ANGLE INFO
+                ANGLE = POS_GET_ANGLE_INFO(); 
+                
+                //--- X POSITION                          
+                POS_X_COORDINATE = POS_GET_XPOS_INFO();
+                                        
+                //--- Y POSITION    
+                POS_Y_COORDINATE = POS_GET_YPOS_INFO();
+                    
+                //동작 범위 In-range 
+                if(POS_X_COORDINATE >= POS_AREA_MIN && POS_X_COORDINATE <= POS_AREA_MAX)
+                {
+                    this->XPS = POS_X_COORDINATE;    // X 좌표
+                    this->YPS = POS_Y_COORDINATE;    // Y 좌표 
+                    this->TagNo = (TagNum);             //Tag info
+                    this->ANGLE = (ANGLE);              //Angle Info
+                } 
+                else state |= 0x0010; //Out of Range
+                return state;
+            }
+
+
+
+            //-------------Analysis data and Check errors(for "POS_DATA_ANALYSIS" function)
+            //for Chking Modes
+            void POS_DIR_CHK()
+            {
+                u_int16_t LANE_DATA = 0;
+                if((this->Dir != this->DirOld))
+                {
+                    (LANE_DATA)|=(u_int16_t)(POS_BUF[1]&0x03);
+                    switch(LANE_DATA)
+                    {
+                        case 1: this->DirOld = 1; break;
+                        case 2: this->DirOld = 2; break;
+                        case 3: this->DirOld = 3; break;
+                        default: break;
+                    }
+                }
+            }
+
+            // void POS_COLOR_CHK()
+            // {
+            //     this->ColorOld = this->Color;
+            //     u_int16_t COLOR_DATA = 0;
+            //     if((this->Color != this->ColorOld))
+            //     {
+            //          (COLOR_DATA)|=(u_int16_t)(POS_BUF[1]&0x03);
+            //          switch(COLOR_DATA)
+            //          {
+            //               case 1: this->DirOld = 1; break;
+            //               case 2: this->DirOld = 2; break;
+            //               case 3: this->DirOld = 3; break;
+            //               default: break;
+            //          }
+            //     }
+            // }
+
+            //CHKSUM calculator
+            uint16_t POS_CHKSUM_DATA()
+            {
+                u_int16_t  i=0;
+                u_int16_t  j=0;
+                u_int16_t  even_cnt[POS_PGV100_TOTAL_BYTES]={0,};
+                u_int16_t  ChkSum_Data=0;
+                u_int16_t  temp=0;
+                for(i=0;i<9;i++) even_cnt[i]=0;
+                
+                for(i=0;i<(POS_PGV100_TOTAL_BYTES-1);i++) //Buf 0~20 21개. 
+                {
+                    temp=POS_BUF[i];
+                    for(j=0;j<8;j++)  //8bit data
+                    {
+                        if((temp>>j)&0x01) even_cnt[j]+=1;//even 
+                    }
+                    //ChkSum_Data=0;
+                } 
+                for(i=0;i<(POS_PGV100_TOTAL_BYTES-1);i++)
+                {//buf 0~20 8개(입력받는 21개 데이터-1) 
+                    if((even_cnt[i]&0x01)==0x01) ChkSum_Data|= ((u_int16_t)1<<i);//홀수이면 1, 짝수이면 0
+                }
+                return ChkSum_Data;
+            }
+
+            uint16_t POS_ERR_CHK(u_int16_t *ChkSum_Data)
+            {
+                uint16_t state=0;
+                int32_t errcode=0;
+
+                //------------------------------------------------------------------ 
+                //STATE    
+                // 0x0000 = Good
+                // 0x0001 = Good(warning)
+                // 0x0002 = code condition error(code distance chk)
+                // 0x0004 = No DIR. decision(Set POS.Sensor DIR.)
+                // 0x0008 = No Color decision(Set Color choice)
+                // 0x0010 = Out of Range
+                // 0x0020 = No Position
+                // 0x0040 = Timeout(communication error)
+                // 0x0080 = chk_sum error ;
+                // 0x1000 = internal error (Recommend to change sensors)
+                // 0x2000 = reserved
+                // 0x4000 = reserved
+                // 0x8000 = reserved
+                //--------------------------------------------------------------------
+                
+                ///to define addintional errors
+                //if((PCVRSTValue->SUM_diff)>300.0f){SysERR_SAVE(SysERR_PCV100_TAPE);}//마그네틱 코드 테이프 err
+                
+                
+                if(POS_BUF[20]==(*ChkSum_Data))   //POS_BUF[20] <--- check sum buffer 
+                {
+                    if((POS_BUF[0]&0x01)==0x01)    //Err Occured
+                    {
+                        errcode =  POS_GET_ERR_INFO();       
+                        if(errcode>1000) state |= 0x1000;        //Internal Fatal Error  (교체)
+                        else if(errcode==2) state |= 0x0002;     //code condition error(code distance chk)
+                        else if(errcode==5) state |= 0x0004;     //No clear position can be determined(거리수정)
+                        else if(errcode==6) state |= 0x0008;     // No Color decision(Set Color choice)
+                    }
+                    else if((POS_BUF[0]&0x02)) state |= 0x0020;    //No Position Error
+                } 
+                else state |= 0x0080;        //check sum error
+                if(POS_CommTimer_IsExpired()) state |= 0x0040;        //Timeout(communication error)
+                return state;
+            }
+
+            uint16_t POS_DATA_ANALYSIS()
+            { 
+                u_int16_t state=0;
+                u_int16_t ChkSum_Data=0;
+
+                POS_DIR_CHK();          // DIRETION CHECK
+                POS_COLOR_CHK();        // COLOR CHECK
+                ChkSum_Data = POS_CHKSUM_DATA();           //Calculate chksum
+                state |= POS_ERR_CHK(&ChkSum_Data);        //ERR Chk
+                
+                if(state==0x0000) state |= POS_GET_INFO();
+
+                return state;
+            }
+
+
+
+            //-------------for filtering noises and vailding data (for "POS_SENSOR_RECEIVE" function)
+            void POS_ERR_FILTER(u16 *state, u16 filterNum) 
+            {
+                if((*state)<=0x0001)        //Good 또는 Good(warning)
+                {
+                    ErrCnd_Cnt=0;
+                    if(NomCnd_Cnt > filterNum) this->SensorErr = (*state);
+                    else NomCnd_Cnt++;
+                }
+                else                     //report Err to structures
+                {
+                    NomCnd_Cnt=0;
+                    if(ErrCnd_Cnt > filterNum) this->SensorErr = (*state);
+                    else ErrCnd_Cnt++;
+                }  
+            }
+
+            uint16_t POS_SENSOR_RECEIVE() 
+            {    
+                u_int16_t state;
+                POS_SEQUENCE=1;
+                state = POS_DATA_ANALYSIS();          // ANALYSIS THE GETTED INFOMATION  
+                POS_ERR_FILTER(PCVRSTValue, &state, 5);      
+                return state;
             }
 
 
 
             void WORK_LOOP()
             {
-                /*
-                    메인 작업 
-                
-                
-                */
-
-
-                INIT_BUFFER();
+                Init_Buffer();
+                Request_Selector();
                 while (true)
                 {
 
 
 
 
-                    if (this.state > 10)
+                    if (this->state > 10)
                     //매직 플래그를 사용해서
                     //완료 후의 상태는 10 이상으로 정의
                     {
                         break;
                     }
                 }
-                onDataReceived(POS_BUF);
+                //onDataReceived(POS_BUF);
                 executer.join();
             }
 
@@ -163,30 +582,17 @@ namespace Nyamkani
 
         public:
 
-            void Init(char* path)
+            void System_Initiation()
             {
-                try
-                {
-                    //초기화 메서드 실행
-
-                    this->InitValues();
-                    this->LoadParameter(path);
-
-
-
-
-                }
-                catch ()
-                {
-                    cout << "File is not exist"
-                }
-               
-            };
-
-            void AddListener(DATA_RECEIVE_HANDLER callback)
-            {
-                this->onDataReceived = callback;
+               //bool LoadParameter(char* path);
+               this->Init485Comm();
+               this->InitValues();
             }
+
+            // void AddListener(DATA_RECEIVE_HANDLER callback)
+            // {
+            //     //this->onDataReceived = callback;
+            // }
 
             void Start()
             {
@@ -216,7 +622,6 @@ namespace Nyamkani
                 std::terminate(executer); 
             };
     }
-
 
 }
 

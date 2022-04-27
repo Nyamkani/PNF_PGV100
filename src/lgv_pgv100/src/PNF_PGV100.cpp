@@ -71,6 +71,7 @@ namespace Nyamkani
 
     enum PGV_Cmd
     {
+            //Write Comm. cmd
             PGV100_Straight_Request = 0,                //for Reqeusting  changing  straight  direction
             PGV100_Left_Request,                        //for Reqeusting  changing  left  direction
             PGV100_Right_Request,                       //for Reqeusting  changing  right direction
@@ -81,6 +82,16 @@ namespace Nyamkani
 
             PGV100_Pos_Request,                         //for Reqeusting messages    from head to receive POSITON 
 
+            //Write Param. cmd
+            PGV100_Change_X_OFFSET,
+            PGV100_Change_Y_OFFSET,
+            PGV100_Change_ANGLE_OFFSET,
+            PGV100_Change_Direction,
+            PGV100_Change_Color, 
+
+            //Read All params
+            PGV100_View_ALL_Read_Val,
+
     };
 
     class MODULE_PGV100
@@ -89,26 +100,24 @@ namespace Nyamkani
             //---------------------------------------------------------------------------pgv100 output. declation
             //to see useful values
             double  XPS;               
-            double  YPS;        
+            double  YPS;   
+            double ANGLE;
             u_int16_t TagNo;
-            u_int16_t DirOld;
-            u_int16_t ColorOld;
+            u_int16_t NowDir;
+            u_int16_t NowColor;
             u_int16_t SensorErr;
 
             //---------------------------------------------------------------------------pgv100 parameters. declation
             //params
             double  X_OFFSET;
             double  Y_OFFSET;
-            int16_t  ANGLE;
+            double ANGLE_OFFSET;
 
             //---------------------------------------------------------------------------pgv100 working option. declation
-            u_int16_t Dir; //left, right, straight   - 1,2,3 
-            u_int16_t Color;
+            u_int16_t WillDir; //left, right, straight   - 1,2,3 
+            u_int16_t WillColor;
 
             u_int16_t POS_BUF[POS_PGV100_TOTAL_BYTES] = { 0 };      // Response POS data buffer
-
-            u_int16_t POS_BUF_PTR = 0;                 //
-            u_int16_t POS_SEQUENCE = 0;        // response result check
 
             int32_t POS_AREA_MAX = 10000;                                          // PCV센서 범위 Maximum(mm)
             int32_t POS_AREA_MIN = (-100);   // PCV센서 범위 Minimum 
@@ -132,8 +141,10 @@ namespace Nyamkani
             //---------------------------------------------------------------------------485 Comm. cmds declation
             //Values for request cmd
             std::vector<std::string> RequestCmd;
-
-            void InitCmd()
+            std::vector<int> RequestQueue;
+            
+            //Funcion for Related Request
+            void Init_Requset_Cmd()
             {
                 RequestCmd[PGV100_Straight_Request] = "0xEC0x13";
                 RequestCmd[PGV100_Left_Request] = "0xEC0x13";
@@ -143,6 +154,22 @@ namespace Nyamkani
                 RequestCmd[PGV100_Blue_Request] = "0xC40x3B";
                 RequestCmd[PGV100_Pos_Request] = "0xC80x37";
             }
+
+            void Save_Request_In_queue(int cmd){RequestQueue.push_back(cmd);}
+
+            void Do_Write_Request() {if((RequestQueue.size()!=0)) write(serial_port, &RequestCmd[RequestQueue.front()], sizeof(RequestCmd[RequestQueue.front()])); }
+
+            int Do_Get_Answer() {return read(serial_port, &POS_BUF, sizeof(POS_BUF));}
+
+            void Manage_Cmd_Queue()
+            {
+                //std::vector<int>::iterator front_itr = RequestQueue.begin();
+                //std::vector<int>::iterator end_itr = RequestQueue.end();
+                RequestQueue.erase(RequestQueue.begin());
+                RequestQueue.resize(RequestQueue.back());
+            }
+
+
             
             //bool LoadParameter(char* path)
             //{
@@ -157,7 +184,7 @@ namespace Nyamkani
 
    
             //}
-            int Init485Comm()
+            int Init_485_Comm()
             {
                 // Open the serial port. Change device path as needed (currently set to an standard FTDI USB-UART cable type device)
                 serial_port = open("/dev/ttyUSB0", O_RDWR);
@@ -230,10 +257,7 @@ namespace Nyamkani
                 }
 
 
-
-
-
-            void InitValues()
+            void Init_Parameter()
             {
                 XPS = 0;
                 YPS = 0;
@@ -243,15 +267,13 @@ namespace Nyamkani
  
                 TagNo = 0;
  
-                Dir = 0;
-                DirOld = 0;
+                NowDir = 0;
+                WillDir = 0;
  
-                Color = 0;
-                ColorOld = 0;
+                NowColor = 0;
+                WillColor = 0;
  
                 SensorErr = 0;
-                POS_SEQUENCE = 1;
-
             }
 
             void Init_Buffer()
@@ -259,34 +281,36 @@ namespace Nyamkani
                 memset(&POS_BUF, '\0', sizeof(POS_BUF));
             }
 
-            void POS_REQUEST()
+            int POS_REQUEST()
             {
-                write(serial_port, PGV100_Pos_Request, sizeof(PGV100_Pos_Request));
+                return PGV100_Pos_Request;
             }
 
             //for following line-tape and Matrix data
-            void DIR_REQUEST()
+            int DIR_REQUEST()
             {
-                if(this->Dir==0) this->Dir=3;
-                switch(this->Dir)
+                if(this->NowDir==0) this->WillDir=3;
+                switch(this->WillDir)
                 {            
-                    case 1: write(serial_port, PGV100_Right_Request,sizeof(PGV100_Right_Request)); break;
-                    case 2: write(serial_port, PGV100_Left_Request,sizeof(PGV100_Left_Request)); break;
-                    case 3: write(serial_port, PGV100_Straight_Request,sizeof(PGV100_Straight_Request)); break;
+                    case 1: return PGV100_Right_Request; break;
+                    case 2: return PGV100_Left_Request; break;
+                    case 3: return PGV100_Left_Request; break;
                     default: break;
                 }
+                return -1;
             }
 
             //for following Colored tape
-            void COLOR_REQUEST()
+            int COLOR_REQUEST()
             {
-                switch(this->Color)
+                switch(this->NowColor)
                 {
-                    case 1: write(serial_port, PGV100_Red_Request,sizeof(PGV100_Red_Request)); break;
-                    case 2: write(serial_port, PGV100_Green_Request,sizeof(PGV100_Green_Request)); break;
-                    case 3: write(serial_port, PGV100_Blue_Request,sizeof(PGV100_Blue_Request)); break;
+                    case 1: return PGV100_Red_Request; break;
+                    case 2: return PGV100_Green_Request; break;
+                    case 3: return PGV100_Blue_Request; break;
                     default: break;
                 }
+                return -1; 
             }
 
             //for Chk condition and do seperated funcc.

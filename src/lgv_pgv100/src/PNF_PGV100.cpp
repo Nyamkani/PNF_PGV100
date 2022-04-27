@@ -17,6 +17,7 @@
 
 
 using std::thread;
+using Nyamkani;
 
 //declare own ros2 headers
 #include "rclcpp/rclcpp.hpp"
@@ -24,8 +25,6 @@ using std::thread;
 
 #define POS_PGV100_TOTAL_BYTES 21
 #define CMD_NULL 0X00
-
-
 
 namespace Nyamkani
 {
@@ -548,8 +547,6 @@ namespace Nyamkani
                 return state;
             }
 
-
-
             //-------------for filtering noises and vailding data (for "POS_SENSOR_RECEIVE" function)
             void POS_ERR_FILTER(u16 *state, u16 filterNum) 
             {
@@ -606,6 +603,15 @@ namespace Nyamkani
 
         public:
 
+            void SetXOFFSET(int value)
+            {
+                
+
+
+
+
+            }
+
             void System_Initiation()
             {
                //bool LoadParameter(char* path);
@@ -647,27 +653,111 @@ namespace Nyamkani
             };
     }
 
+    //싱글턴
+    class MainManager
+    {
+
+    private:
+        static MainManager* _instance;
+        MainManager() {}
+        
+        ControlSystem& controlSystem;
+        std::vector<MODULE_PGV100&> pgv_modules;
+
+    public:
+        
+        static MainManager& GetInstance()
+        {
+            if (_instance == NULL)
+            {
+                _instance = new MainManager();
+            }
+            return *_instance;
+        }
+
+        ControlSystem& GetControlSystem()
+        {
+            return this->controlSystem;
+        }
+
+        MODULE_PGV100& GetMODULE_PGV100(int index)
+        {
+            return this.pgv_modules[index];
+        }
+        
+        void SetControlSystem(ControlSystem& value)
+        {
+            this->controlSystem = value;
+        }
+
+
+        void AddMODULE_PGV100(MODULE_PGV100& value)
+        {
+            this.pgv_modules.push_back(value);
+        }
+    };
+
+
+    class ControlSystem
+    {
+
+    private:
+
+
+
+
+    public:
+
+        void WORK_LOOP()
+        {
+            while (true)
+            {
+                //메세지 수신
+                if (true)
+                {
+                    auto mainManager = Nyamkani::MainManager::GetInstance();
+                    auto pgv = mainManager.GetMODULE_PGV100(0);
+                    pgv.SetXOFFSET(0.7);
+                }
+            }
+        }
+
+        void Start()
+        {
+
+
+
+        }
+    };
+
+
 }
+
+
+
 
 
 int main(int argc, char *argv[])
 {
-    
 
+    //static instance
+    auto a = new MainManager();
+    Nyamkani::MainManager::_instance = a;
+
+  
   rclcpp::init(argc, argv);
+  auto mainManager = Nyamkani::MainManager::GetInstance();
   //auto sick_nav350_publisher = std::make_shared<sick_nav350>();
   //signal(SIGINT,ExitHandler);
   //int ret = sick_nav350_publisher->work_loop();
-  auto instance = new Nyamkani::MODULE_PGV100();
-  instance->Init();
-  instance->Start();
+  auto pgv_instance = new Nyamkani::MODULE_PGV100();
+  mainManager.AddMODULE_PGV100(pgv_instance);
+  pgv_instance->Init();
+  pgv_instance->Start();
 
-
-
-
-
+  auto controlSystemListener = new Nyamkani::ControlSystem();
+  mainManager.SetControlSystem(controlSystemListener);
   
-
 
 
 

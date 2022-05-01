@@ -22,7 +22,7 @@ using std::thread;
 #include "rclcpp/rclcpp.hpp"
 #include "PNF_PGV100.hpp"
 
-#define POS_PGV100_TOTAL_BYTES 21
+//#define POS_PGV100_TOTAL_BYTES 21
 #define CMD_NULL 0X00
 
 
@@ -157,7 +157,13 @@ namespace Nyamkani
 
             void Save_Request_In_queue(int cmd){RequestQueue.push_back(cmd);}
 
-            void Do_Write_Request() {if((RequestQueue.size()!=0)) write(serial_port, &RequestCmd[RequestQueue.front()], sizeof(RequestCmd[RequestQueue.front()])); }
+            void Do_Write_Request() 
+            {
+                if((RequestQueue.size()!=0) & (state = Request)) 
+                {
+                    if(write(serial_port, &RequestCmd[RequestQueue.front()], sizeof(RequestCmd[RequestQueue.front()]))) state = WaitAnswer;
+                }
+            }
 
             int Do_Get_Answer() {return read(serial_port, &POS_BUF, sizeof(POS_BUF));}
 
@@ -585,19 +591,21 @@ namespace Nyamkani
             {
                 //LoadParameter()
                 Init_Requset_Cmd();
+                Init_485_Comm();
             }
 
             //the main loop
             void WORK_LOOP()
             {
                 //Initiation
-                Init_485_Comm();
                 Init_Buffer();
 
                 //Save command
                 Request_Selector();
+
                 //Do command
                 Do_Write_Request();
+                //Delete operated command
                 Manage_Cmd_Queue();
 
                 while (true)

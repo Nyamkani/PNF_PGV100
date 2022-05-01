@@ -17,7 +17,6 @@
 
 
 using std::thread;
-using Nyamkani;
 
 //declare own ros2 headers
 #include "rclcpp/rclcpp.hpp"
@@ -25,6 +24,8 @@ using Nyamkani;
 
 #define POS_PGV100_TOTAL_BYTES 21
 #define CMD_NULL 0X00
+
+
 
 namespace Nyamkani
 {
@@ -62,7 +63,7 @@ namespace Nyamkani
         ERR_10 = 0x0200,   //Reserved
         ERR_11 = 0x0400,   //Reserved
         ERR_12 = 0x0800,   //Reserved
-        ERR_13 = 0x1000,   //Reserved
+        ERR_13 = 0x1000,   //Internal Fatal Error  (교체)
         ERR_14 = 0x2000,   //Reserved
         ERR_15 = 0x4000,   //Reserved
         ERR_16 = 0x8000,   //Reserved
@@ -162,8 +163,6 @@ namespace Nyamkani
 
             void Manage_Cmd_Queue()
             {
-                //std::vector<int>::iterator front_itr = RequestQueue.begin();
-                //std::vector<int>::iterator end_itr = RequestQueue.end();
                 RequestQueue.erase(RequestQueue.begin());
                 RequestQueue.resize(RequestQueue.back());
             }
@@ -183,6 +182,7 @@ namespace Nyamkani
 
    
             //}
+
             int Init_485_Comm()
             {
                 // Open the serial port. Change device path as needed (currently set to an standard FTDI USB-UART cable type device)
@@ -280,6 +280,9 @@ namespace Nyamkani
                 memset(&POS_BUF, '\0', sizeof(POS_BUF));
             }
 
+
+
+
             int POS_REQUEST()
             {
                 return PGV100_Pos_Request;
@@ -315,10 +318,12 @@ namespace Nyamkani
             //for Chk condition and do seperated funcc.
             void Request_Selector()
             {
+                int ReqeustCode;
                 this->state = WaitAnswer;
-                if((this->Dir != this->DirOld)||(this->Dir==0)) {DIR_REQUEST();}
-                else if(this->Color != 0) {COLOR_REQUEST();}
-                else {POS_REQUEST();}
+                if((this->NowDir != this->WillDir)||(this->NowDir==0)) {ReqeustCode = DIR_REQUEST();}
+                else if(this->NowColor != 0) {ReqeustCode = COLOR_REQUEST();}
+                else {ReqeustCode = POS_REQUEST();}
+                Save_Request_In_queue(ReqeustCode);
             }
 
 
@@ -433,35 +438,35 @@ namespace Nyamkani
             void POS_DIR_CHK()
             {
                 u_int16_t LANE_DATA = 0;
-                if((this->Dir != this->DirOld))
+                if((this->NowDir != this->WillDir))
                 {
                     (LANE_DATA)|=(u_int16_t)(POS_BUF[1]&0x03);
                     switch(LANE_DATA)
                     {
-                        case 1: this->DirOld = 1; break;
-                        case 2: this->DirOld = 2; break;
-                        case 3: this->DirOld = 3; break;
+                        case 1: this->NowDir = 1; break;
+                        case 2: this->NowDir = 2; break;
+                        case 3: this->NowDir = 3; break;
                         default: break;
                     }
                 }
             }
 
-            // void POS_COLOR_CHK()
-            // {
-            //     this->ColorOld = this->Color;
-            //     u_int16_t COLOR_DATA = 0;
-            //     if((this->Color != this->ColorOld))
-            //     {
-            //          (COLOR_DATA)|=(u_int16_t)(POS_BUF[1]&0x03);
-            //          switch(COLOR_DATA)
-            //          {
-            //               case 1: this->DirOld = 1; break;
-            //               case 2: this->DirOld = 2; break;
-            //               case 3: this->DirOld = 3; break;
-            //               default: break;
-            //          }
-            //     }
-            // }
+            void POS_COLOR_CHK()
+            {
+                this->NowColor = this->WillColor;
+                u_int16_t COLOR_DATA = 0;
+                if((this->NowColor != this->WillColor))
+                {
+                     (COLOR_DATA)|=(u_int16_t)(POS_BUF[1]&0x03);
+                     switch(COLOR_DATA)
+                     {
+                          case 1: this->NowColor = 1; break;
+                          case 2: this->NowColor = 2; break;
+                          case 3: this->NowColor = 3; break;
+                          default: break;
+                     }
+                }
+            }
 
             //CHKSUM calculator
             uint16_t POS_CHKSUM_DATA()
@@ -520,15 +525,16 @@ namespace Nyamkani
                     if((POS_BUF[0]&0x01)==0x01)    //Err Occured
                     {
                         errcode =  POS_GET_ERR_INFO();       
-                        if(errcode>1000) state |= 0x1000;        //Internal Fatal Error  (교체)
-                        else if(errcode==2) state |= 0x0002;     //code condition error(code distance chk)
-                        else if(errcode==5) state |= 0x0004;     //No clear position can be determined(거리수정)
-                        else if(errcode==6) state |= 0x0008;     // No Color decision(Set Color choice)
+                        //Because PGV100 returns error one by one
+                        if(errcode>1000) state |= ErrCode::ERR_13;        //Internal Fatal Error  (교체)
+                        else if(errcode==2) state |= ErrCode::ERR_01;     //code condition error(code distance chk)
+                        else if(errcode==5) state |= ErrCode::ERR_03;     //No clear position can be determined(거리수정)
+                        else if(errcode==6) state |= ErrCode::ERR_04;     // No Color decision(Set Color choice)
                     }
-                    else if((POS_BUF[0]&0x02)) state |= 0x0020;    //No Position Error
+                    else if((POS_BUF[0]&0x02)) state |= ErrCode::ERR_06;    //No Position Error
                 } 
-                else state |= 0x0080;        //check sum error
-                if(POS_CommTimer_IsExpired()) state |= 0x0040;        //Timeout(communication error)
+                else state |= ErrCode::ERR_08;        //check sum error
+                //if(POS_CommTimer_IsExpired()) state |= 0x0040;        //Timeout(communication error)
                 return state;
             }
 
@@ -547,8 +553,10 @@ namespace Nyamkani
                 return state;
             }
 
+
+
             //-------------for filtering noises and vailding data (for "POS_SENSOR_RECEIVE" function)
-            void POS_ERR_FILTER(u16 *state, u16 filterNum) 
+            void POS_ERR_FILTER(u_int16_t *state, u_int16_t filterNum) 
             {
                 if((*state)<=0x0001)        //Good 또는 Good(warning)
                 {
@@ -567,30 +575,37 @@ namespace Nyamkani
             uint16_t POS_SENSOR_RECEIVE() 
             {    
                 u_int16_t state;
-                POS_SEQUENCE=1;
                 state = POS_DATA_ANALYSIS();          // ANALYSIS THE GETTED INFOMATION  
-                POS_ERR_FILTER(PCVRSTValue, &state, 5);      
+                POS_ERR_FILTER(&state, 5);      
                 return state;
             }
+            //-------------The Main Functions
+            //When the Frist initiation do
+            void First_Work()
+            {
+                //LoadParameter()
+                Init_Requset_Cmd();
+            }
 
-
-
+            //the main loop
             void WORK_LOOP()
             {
+                //Initiation
+                Init_485_Comm();
                 Init_Buffer();
+
+                //Save command
                 Request_Selector();
+                //Do command
+                Do_Write_Request();
+                Manage_Cmd_Queue();
+
                 while (true)
                 {
+                    //Receive Answer
+                    Do_Get_Answer();
 
-
-
-
-                    if (this->state > 10)
-                    //매직 플래그를 사용해서
-                    //완료 후의 상태는 10 이상으로 정의
-                    {
-                        break;
-                    }
+                    if (this->state > 10){ break;}
                 }
                 //onDataReceived(POS_BUF);
                 executer.join();
@@ -603,21 +618,6 @@ namespace Nyamkani
 
         public:
 
-            void SetXOFFSET(int value)
-            {
-                
-
-
-
-
-            }
-
-            void System_Initiation()
-            {
-               //bool LoadParameter(char* path);
-               this->Init485Comm();
-               this->InitValues();
-            }
 
             // void AddListener(DATA_RECEIVE_HANDLER callback)
             // {
@@ -653,111 +653,27 @@ namespace Nyamkani
             };
     }
 
-    //싱글턴
-    class MainManager
-    {
-
-    private:
-        static MainManager* _instance;
-        MainManager() {}
-        
-        ControlSystem& controlSystem;
-        std::vector<MODULE_PGV100&> pgv_modules;
-
-    public:
-        
-        static MainManager& GetInstance()
-        {
-            if (_instance == NULL)
-            {
-                _instance = new MainManager();
-            }
-            return *_instance;
-        }
-
-        ControlSystem& GetControlSystem()
-        {
-            return this->controlSystem;
-        }
-
-        MODULE_PGV100& GetMODULE_PGV100(int index)
-        {
-            return this.pgv_modules[index];
-        }
-        
-        void SetControlSystem(ControlSystem& value)
-        {
-            this->controlSystem = value;
-        }
-
-
-        void AddMODULE_PGV100(MODULE_PGV100& value)
-        {
-            this.pgv_modules.push_back(value);
-        }
-    };
-
-
-    class ControlSystem
-    {
-
-    private:
-
-
-
-
-    public:
-
-        void WORK_LOOP()
-        {
-            while (true)
-            {
-                //메세지 수신
-                if (true)
-                {
-                    auto mainManager = Nyamkani::MainManager::GetInstance();
-                    auto pgv = mainManager.GetMODULE_PGV100(0);
-                    pgv.SetXOFFSET(0.7);
-                }
-            }
-        }
-
-        void Start()
-        {
-
-
-
-        }
-    };
-
-
 }
-
-
-
 
 
 int main(int argc, char *argv[])
 {
+    
 
-    //static instance
-    auto a = new MainManager();
-    Nyamkani::MainManager::_instance = a;
-
-  
   rclcpp::init(argc, argv);
-  auto mainManager = Nyamkani::MainManager::GetInstance();
   //auto sick_nav350_publisher = std::make_shared<sick_nav350>();
   //signal(SIGINT,ExitHandler);
   //int ret = sick_nav350_publisher->work_loop();
-  auto pgv_instance = new Nyamkani::MODULE_PGV100();
-  mainManager.AddMODULE_PGV100(pgv_instance);
-  pgv_instance->Init();
-  pgv_instance->Start();
+  auto instance = new Nyamkani::MODULE_PGV100();
+  instance->Init();
+  instance->Start();
 
-  auto controlSystemListener = new Nyamkani::ControlSystem();
-  mainManager.SetControlSystem(controlSystemListener);
+
+
+
+
   
+
 
 
 

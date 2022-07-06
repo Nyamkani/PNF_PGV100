@@ -97,11 +97,11 @@ namespace Nyamkani
 	void PNFPosSensor::Change_Buffer_size(uint16_t Buffer_Size) {this->Buffer_Size_ = Buffer_Size;}
 
 	//param use
-	void PNFPosSensor::Change_XOffset(double X_Offset) {this->X_Offset_ = X_Offset;}
-	void PNFPosSensor::Change_YOffset(double Y_Offset) {this->Y_Offset_ = Y_Offset;}
+	PNFPosSensor& PNFPosSensor::Change_XOffset(double X_Offset) {return* this->X_Offset_ = X_Offset;}
+	PNFPosSensor& PNFPosSensor::Change_YOffset(double Y_Offset) {return* this->Y_Offset_ = Y_Offset;}
 
 	//pgv100 param only
-	void PNFPosSensor::Change_Angle_Offset(double Angle_Offset)  { this->Angle_Offset_ = Angle_Offset;}
+	PNFPosSensor& PNFPosSensor::Change_Angle_Offset(double Angle_Offset) {return* this->Angle_Offset_ = Angle_Offset;}
 
 
 	//---------------------------------------------------------------Requset command
@@ -153,7 +153,20 @@ namespace Nyamkani
 
 	}
 
+	//---------------------------------------------------------------Processing data
 
+	bool PNFPosSensor::Process_Is_Tag_Detected(){return (POS_BUF_[1] & 0x40);}
+
+	PNFPosSensor& PNFPosSensor::Process_Get_Tag_Number()
+	{
+	     int16_t TagNum = 0;
+		 (TagNum)=(int32_t)POS_BUF[17];
+		 (TagNum)|=(int32_t)POS_BUF[16]<<7;
+		 (TagNum)|=(int32_t)POS_BUF[15]<<14;
+		 (TagNum)|=(int32_t)POS_BUF[14]<<21;
+		 tagNo_ = TagNum;
+		 return* this->tagNo_;
+	}
 
 
 

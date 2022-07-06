@@ -162,13 +162,13 @@ namespace Nyamkani
 			   void Construct_Default_Param();
 
 				//Initialization for work-loop
-				void PNFPosSensor::Init_Read_Buffer()
+				void PNFPosSensor::Init_Read_Buffer();
 
 
 				//-----------------------------------------------------------------------Change parameters
-				void Change_XOffset(double X_Offset);
-				void Change_YOffset(double Y_Offset);
-				void Change_Angle_Offset(double Angle_Offset);
+				PNFPosSensor& Change_XOffset(double X_Offset);
+				PNFPosSensor& Change_YOffset(double Y_Offset);
+				PNFPosSensor& Change_Angle_Offset(double Angle_Offset);
 
 
 				//----------------------------------------------------------------------Requset command

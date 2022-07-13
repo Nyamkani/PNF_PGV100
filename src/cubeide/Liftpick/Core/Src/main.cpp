@@ -148,7 +148,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	Nyamkani::PNFPosSensor PGV100(0, 5, 10.0, 10.0, 15.0);
+	Nyamkani::PNFPosSensor PGV100(1, 0, 5, 10.0, 10.0, 15.0);
 
     /* USER CODE BEGIN 3 */
   }

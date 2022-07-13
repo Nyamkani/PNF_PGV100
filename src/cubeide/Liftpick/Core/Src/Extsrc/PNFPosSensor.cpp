@@ -7,6 +7,7 @@
 
 #include <Extinc/PNFPosSensor.h>
 #include "Extinc/api_init.h"
+#include "Extinc/LLUart.h"
 
 /* Includes ------------------------------------------------------------------*/
 #include "cmsis_os.h"
@@ -21,8 +22,8 @@ uint16_t g_pnf_comm_time_6;
 //these four-values must be in stm32f7xx_it.h or .c
 std::vector<uint16_t> g_pnf_read_buffer_5;
 std::vector<uint16_t> g_pnf_read_buffer_6;
-uint16_t g_pnf_buffer_length_5;
-uint16_t g_pnf_buffer_length_6;
+uint16_t g_pnf_buffer_counter_5;
+uint16_t g_pnf_buffer_counter_6;
 
 /* Local Variables ------------------------------------------------------------------*/
 
@@ -84,15 +85,17 @@ namespace Nyamkani
 		{
 			MX_UART5_Init();
 			if(pos_buf_ == nullptr) pos_buf_ = &g_pnf_read_buffer_5;
-			if(pos_read_buffer_length_ == nullptr) pos_read_buffer_length_ = &g_pnf_buffer_length_5;
+			if(pos_read_buffer_counter_ == nullptr) pos_read_buffer_counter_ = &g_pnf_buffer_counter_5;
 			if(comm_time_ == nullptr) comm_time_ = &g_pnf_comm_time_5;
+			if(USARTx == nullptr ) USARTx = UART5;
 		}
 		else if(this->port_ == 6)
 		{
 			MX_USART6_UART_Init();
 			if(pos_buf_ == nullptr) pos_buf_ = &g_pnf_read_buffer_6;
-			if(pos_read_buffer_length_ == nullptr) pos_read_buffer_length_ = &g_pnf_buffer_length_6;
+			if(pos_read_buffer_counter_ == nullptr) pos_read_buffer_counter_ = &g_pnf_buffer_counter_6;
 			if(comm_time_ == nullptr) comm_time_ = &g_pnf_comm_time_6;
+			if(USARTx == nullptr ) USARTx = USART6;
 		}
 		//else {throw }
 	}
@@ -119,7 +122,7 @@ namespace Nyamkani
 		//resize vector length
 		pos_buf_->assign(this->max_read_buf_size_, 0);
 		//initialize numbering
-		*pos_read_buffer_length_ = 0;
+		*pos_read_buffer_counter_ = 0;
 	}
 
 	//--------------------------------------------------------------Sensor Utils
@@ -221,14 +224,14 @@ namespace Nyamkani
 	void PNFPosSensor::Work_Send_Request()
 	{
 		/*write functions start*/
-		/*Usart_Transmit(USARTx, RequestCmd[RequestQueue.front()], sizeof(RequestCmd[RequestQueue.front()]))*/
+		Usart_Transmit(this->USARTx, RequestCmd[RequestQueue.front()]);
 		/*write functions end*/
 	}
 
 	void PNFPosSensor::Work_Receive_Response()
 	{
-		/*write functions*/
-		/*Usart_Transmit()*/
+		/*Read functions*/
+		Usart_Receive(this->USARTx);
 
 	}
 
@@ -446,7 +449,7 @@ namespace Nyamkani
 		CommTimerReset();
 		Init_Read_Buffer();
 		Work_Send_Request();
-		while((*pos_read_buffer_length_) <= this->max_read_buf_size_)  //when the buffer reached specific values
+		while((*pos_read_buffer_counter_) <= this->max_read_buf_size_)  //when the buffer reached specific values
 		{
 			Work_Receive_Response();
 			if(CommTimerIsExpired()) break;

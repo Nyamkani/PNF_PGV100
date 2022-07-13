@@ -7,79 +7,62 @@
 
 #include "Extinc/LLUart.h"
 
+//these four-values must be in stm32f7xx_it.h or .c
+//extern uint16_t g_pnf_comm_time_5;
+//extern uint16_t g_pnf_comm_time_6;
+
+extern std::vector<uint16_t> g_pnf_read_buffer_5;
+extern std::vector<uint16_t> g_pnf_read_buffer_6;
+
+extern uint16_t g_pnf_buffer_counter_5;
+extern uint16_t g_pnf_buffer_counter_6;
 
 
-uint16_t buf_counter=0;
-uint8_t uart_buf[20]={0};
-uint8_t receive_condition=0;
 
 
-
-
-int Usart_Write()
+/*
+int Usart_Write(USART_TypeDef *USARTx, std::vector<uint16_t> data)
 {
-	uint32_t count=0;
-	uint16_t length;
-	char data[20];
-
-	memset(data,0x00,sizeof(data));
-	length=sprintf(data,"start\r\n");
-	Usart_Transmit(USART6,data,length);
-
 	while (1)
 	{
-	  LL_mDelay(200);
-	  count++;
-	  memset(data,0x00,sizeof(data));
-	  length=sprintf(data,"count:%ld\r\n",count);
-	  Usart_Transmit(USART6,data,length);
+	  LL_mDelay(1);
+	  uint16_t length= data.size();
+	  Usart_Transmit((*USARTx),data,length);
 	}
 
 }
+*/
 
 
 
 
 
-
-int Usart_Transmit(USART_TypeDef *USARTx, char* data, uint16_t length)
+void Usart_Transmit(USART_TypeDef *USARTx, std::string data)
 {
-	uint16_t i=0;
-	for(i=0;i<length;i++){
-		LL_USART_TransmitData8(USART6,data[i]);
-		while(!LL_USART_IsActiveFlag_TXE(USART6));
+	uint16_t datalength = data.size();
+	for(uint16_t i=0;i<datalength;i++){
+		LL_USART_TransmitData8(USARTx, data[i]);
+		while(!LL_USART_IsActiveFlag_TXE(USARTx));
 	}
-
 }
 
 
 
 
 
-int Usart_Receive()
+void Usart_Receive(USART_TypeDef *USARTx)
 {
 	/* USER CODE BEGIN 2 */
-	LL_USART_EnableIT_RXNE(USART6);
-	LL_USART_EnableIT_IDLE(USART6);
-	printf("start\r\n");
+	LL_USART_EnableIT_RXNE(USARTx);
+	LL_USART_EnableIT_IDLE(USARTx);
 	/* USER CODE END 2 */
-
-	/* Infinite loop */
-	/* USER CODE BEGIN WHILE */
-	while (1)
-	{
-	  if(receive_condition)
-	  {
-		  uart_buf[buf_counter]=0x00;
-		  receive_condition=0;
-		  printf("str%d:%s\n\n\r",buf_counter,uart_buf);
-
-		  buf_counter=0;
-	  }
-	}
 }
 
 
 
+
+//uint16_t buf_counter=0;
+//uint8_t uart_buf[20]={0};
+//uint8_t receive_condition=0;
 
 

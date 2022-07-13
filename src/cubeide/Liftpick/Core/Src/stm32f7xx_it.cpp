@@ -22,6 +22,7 @@
 #include "stm32f7xx_it.h"
 #include "stm32f7xx_ll_usart.h"
 #include "stm32f746xx.h"
+#include <vector>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -63,11 +64,13 @@ extern ETH_HandleTypeDef heth;
 extern CAN_HandleTypeDef hcan1;
 extern TIM_HandleTypeDef htim6;
 
+extern std::vector<uint16_t> g_pnf_read_buffer_5;
+extern std::vector<uint16_t> g_pnf_read_buffer_6;
 
-//for usart6 comm buffer
-extern uint16_t buf_counter;
-extern uint8_t uart_buf[20];
-extern uint8_t receive_condition;
+extern uint16_t g_pnf_buffer_counter_5;
+extern uint16_t g_pnf_buffer_counter_6;
+
+
 
 
 /* USER CODE BEGIN EV */
@@ -275,17 +278,14 @@ void USART6_IRQHandler(void)
     if(LL_USART_IsActiveFlag_RXNE(USART6)){
         //LL_USART_ClearFlag_RXNE(USART6);
     	USART6->ISR &= ~LL_USART_ISR_RXNE;
-        uart_buf[buf_counter]=LL_USART_ReceiveData8(USART6);
-        buf_counter++;
+    	g_pnf_read_buffer_6[g_pnf_buffer_counter_6]=LL_USART_ReceiveData8(USART6);
+    	g_pnf_buffer_counter_6++;
     }
     if(LL_USART_IsActiveFlag_IDLE(USART6)){
         LL_USART_ClearFlag_IDLE(USART6);
-        receive_condition=1;
     }
   /* USER CODE END USART6_IRQn 0 */
   /* USER CODE BEGIN USART6_IRQn 1 */
-
-
 
 
   /* USER CODE END USART6_IRQn 1 */

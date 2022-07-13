@@ -78,7 +78,7 @@ void SystemClock_Config(void)
   * @param None
   * @retval None
   */
-static void MX_CAN1_Init(void)
+void MX_CAN1_Init(void)
 {
 	CAN_HandleTypeDef hcan1;
   /* USER CODE BEGIN CAN1_Init 0 */
@@ -115,7 +115,7 @@ static void MX_CAN1_Init(void)
   * @param None
   * @retval None
   */
-static void MX_UART4_Init(void)
+void MX_UART4_Init(void)
 {
 
   /* USER CODE BEGIN UART4_Init 0 */
@@ -188,7 +188,7 @@ static void MX_UART4_Init(void)
   * @param None
   * @retval None
   */
-static void MX_UART5_Init(void)
+void MX_UART5_Init(void)
 {
 
   /* USER CODE BEGIN UART5_Init 0 */
@@ -263,7 +263,7 @@ static void MX_UART5_Init(void)
   * @param None
   * @retval None
   */
-static void MX_USART1_UART_Init(void)
+void MX_USART1_UART_Init(void)
 {
 
   /* USER CODE BEGIN USART1_Init 0 */
@@ -336,7 +336,7 @@ static void MX_USART1_UART_Init(void)
   * @param None
   * @retval None
   */
-static void MX_USART3_UART_Init(void)
+void MX_USART3_UART_Init(void)
 {
 
   /* USER CODE BEGIN USART3_Init 0 */
@@ -409,7 +409,7 @@ static void MX_USART3_UART_Init(void)
   * @param None
   * @retval None
   */
-static void MX_USART6_UART_Init(void)
+void MX_USART6_UART_Init(void)
 {
 
   /* USER CODE BEGIN USART6_Init 0 */
@@ -478,7 +478,7 @@ static void MX_USART6_UART_Init(void)
 }
 
 /* FMC initialization function */
-static void MX_FMC_Init(void)
+void MX_FMC_Init(void)
 {
 
 	 NOR_HandleTypeDef hnor1;
@@ -537,7 +537,7 @@ static void MX_FMC_Init(void)
   * @param None
   * @retval None
   */
-static void MX_GPIO_Init(void)
+void MX_GPIO_Init(void)
 {
   LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
 

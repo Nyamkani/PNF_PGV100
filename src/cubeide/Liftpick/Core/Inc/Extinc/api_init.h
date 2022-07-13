@@ -17,14 +17,14 @@ extern "C" {
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
-static void MX_CAN1_Init(void);
-static void MX_FMC_Init(void);
-static void MX_UART4_Init(void);
-static void MX_USART1_UART_Init(void);
-static void MX_USART3_UART_Init(void);
-static void MX_USART6_UART_Init(void);
-static void MX_UART5_Init(void);
+void MX_GPIO_Init(void);
+void MX_CAN1_Init(void);
+void MX_FMC_Init(void);
+void MX_UART4_Init(void);
+void MX_USART1_UART_Init(void);
+void MX_USART3_UART_Init(void);
+void MX_USART6_UART_Init(void);
+void MX_UART5_Init(void);
 void StartDefaultTask(void *argument);
 
 

@@ -8,6 +8,7 @@
 #ifndef INC_EXTINC_PNFPOSSENSOR_H_
 #define INC_EXTINC_PNFPOSSENSOR_H_
 
+#pragma once
 //===========================================================================
 //	Include Files
 //===========================================================================
@@ -18,7 +19,7 @@
 #include <vector>
 #include <string>
 #include <queue>
-
+//#include <thread>
 
 //===========================================================================
 //	Local Definitions
@@ -40,6 +41,13 @@
 //===========================================================================
 //	Extern func.
 //===========================================================================
+
+
+//===========================================================================
+//	Global Variables
+//===========================================================================
+
+
 
 //===========================================================================
 //	Local Variables
@@ -75,6 +83,32 @@ namespace Nyamkani
 		 pgv100 = 1,
 	 };
 
+     enum PNFBufferLength
+	 {
+    	 pgv100color = 2,
+		 pgv100dir = 3,
+		 pcv80pos = 9,
+		 pgv100pos = 21,
+	 };
+
+     enum PNFErrorList
+	 {
+	     //STATE
+    	  good = 0x0000,
+		  readheadtilted = 0x0001,  		//Read head tilted 180°.(pcv80 only)
+		  codeconditionerr = 0x0002, 		//code condition error(code distance chk)
+	      nodirectiondeclare = 0x0004,    	//No DIR. decision(Set POS.Sensor DIR.)
+	      nocolordeclare = 0x0008,  		//No Color decision(Set Color choice)
+	      outofrange = 0x0010,      		//Out of Range
+	      noposition = 0x0020,      		//No Position
+	      commtimeout = 0x0040,  			//Timeout(communication error)
+	      checksumerr = 0x0080,  			//chk_sum error ;
+	      internalFatal = 0x1000,  			//internal error (Recommend to change sensors)
+	      //0x2000 = reserved
+	      //0x4000 = reserved
+	      //0x8000 = reserved
+	     //--------------------------------------------------------------------
+	 };
 
 
      enum PNFPosCmd
@@ -118,26 +152,36 @@ namespace Nyamkani
 				//static int Total_PNF_Sensor_Num;
 
 				//to see useful values
-				double XPos_;
-				double YPos_;
-				double Angle_;
-				uint16_t tagNo_;
-				uint8_t NowDir_;
-				uint8_t NowColor_;
-				uint32_t SensorErr_;
+				double xpos_ = 0;
+				double ypos_ = 0;
+				double angle_ = 0;
+				uint16_t tagNo_ = 0;
+				uint8_t dir_ = 0;
+				uint8_t color_ = 0;
+				uint16_t err_ = 0;
 
 				//---------------------------------------------------------------------------pgv100 parameters. declation
 				//params
-				double  X_Offset_;
-				double  Y_Offset_;
-				double Angle_Offset_;
+				double  x_offset_;
+				double  y_offset_;
+				double angle_offset_;
 				//uint8_t OStype_;
-				uint8_t Commtype_;
-				uint8_t Port_;
-				uint8_t PNFSensorType_;
-				//Receive Buffer
+				uint8_t comm_type_;
+				uint8_t port_;
+				uint8_t sensor_type_;
+				uint8_t max_filter_cnt_ = 5;
+				uint8_t now_filter_cnt_= 0;
 
-				std::vector<uint16_t> POS_BUF_;      // Response POS data buffer
+				//uart transmit Buffer
+				USART_TypeDef *USARTx = NULL;
+
+				//Receive Buffer
+				std::vector<uint16_t>* pos_buf_ = NULL;      // Response POS data buffer
+				uint16_t* pos_read_buffer_counter_ = NULL;
+				uint16_t* comm_time_ = NULL;
+				uint16_t max_read_buf_size_;
+				uint16_t reset_time_= 0;
+
 
 				//Limitation
 				int32_t POS_AREA_MAX = 10000;      // Max. range of tape value                                       // PCV센서 범위 Maximum(mm)
@@ -154,12 +198,19 @@ namespace Nyamkani
 				std::queue<int> RequestQueue;
 
 				///First Time setup
-				void Construct_Requset_Cmd();
-				void Construct_Communication_Setup();
-				void Construct_Default_Param();
+				void ConstructRequsetCmd();
+				void ConstructCommunicationSetup();
+				void ConstructDefaultParam();
 
 				//Initialization for work-loop
 				void Init_Read_Buffer();
+
+				//void CommTimerTick();
+				void CommTimerReset();
+				bool CommTimerIsExpired();
+
+
+
 
 				//-----------------------------------------------------------------------Change parameters
 
@@ -203,6 +254,7 @@ namespace Nyamkani
 				//queue system functions
 				void Queue_Save_Request(int cmd);
 				void Queue_Delete_Request();
+				void Queue_Repeat_Pos_Reqeust();
 
 				//---------------------------------------------------------------send or read functions
 				void Work_Send_Request();
@@ -219,10 +271,18 @@ namespace Nyamkani
 				double Process_Get_Angle_Info();
 				double Process_Get_XPos_Info();
 				double Process_Get_YPos_Info();
+				uint8_t Process_Get_Direction_Info();
+				uint8_t Process_Get_Color_Info();
+
+				bool IsValueFiltered();
+				void FilterCountUp();
+				void FilterStatusChanged();
+
 				uint32_t Process_Get_ERR_Info();
 				uint16_t Process_Get_Total_Info();
 
-				int main_loop();
+		  public:
+				uint16_t work_loop();
 
      };
 

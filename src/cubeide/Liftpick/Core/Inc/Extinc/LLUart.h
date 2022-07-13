@@ -15,9 +15,11 @@
 #include "stm32f7xx_it.h"
 #include "stm32f7xx_ll_utils.h"
 #include "stm32f7xx_ll_usart.h"
+#include <vector>
+#include <string>
 
-int Usart_Transmit(USART_TypeDef *USARTx, char* data, uint16_t length);
-int Usart_Receive();
+void Usart_Transmit(USART_TypeDef *USARTx, std::string data);
+void Usart_Receive(USART_TypeDef *USARTx);
 
 
 

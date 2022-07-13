@@ -5,10 +5,6 @@
  *      Author: studio3s
  */
 
-
-
-
-
 #include <Extinc/PNFPosSensor.h>
 #include "Extinc/api_init.h"
 
@@ -18,6 +14,15 @@
 
 /* Global Variables ------------------------------------------------------------------*/
 
+//CommTime releated value
+
+uint16_t g_pnf_comm_time_5;
+uint16_t g_pnf_comm_time_6;
+//these four-values must be in stm32f7xx_it.h or .c
+std::vector<uint16_t> g_pnf_read_buffer_5;
+std::vector<uint16_t> g_pnf_read_buffer_6;
+uint16_t g_pnf_buffer_length_5;
+uint16_t g_pnf_buffer_length_6;
 
 /* Local Variables ------------------------------------------------------------------*/
 
@@ -63,14 +68,14 @@ namespace Nyamkani
 	//--------------------------------------------------------------Construct level - network, first parmas. declation
 	void PNFPosSensor::ConstructRequsetCmd()
 	{
-		RequestCmd[PGV100_Straight_Request] = "EC13";
-		RequestCmd[PGV100_Left_Request] = "E817";
-		RequestCmd[PGV100_Right_Request] = "E41B";
-		RequestCmd[PGV100_Red_Request] = "906F";
-		RequestCmd[PGV100_Green_Request] = "880";
-		RequestCmd[PGV100_Blue_Request] = "C43B";
-		RequestCmd[PGV100_Pos_Request] = "C837";
-		RequestCmd[PCV80_Pos_Requset] = "A05F";
+		RequestCmd[PGV100_Straight_Request] = "0xEC0x13";
+		RequestCmd[PGV100_Left_Request] = "0xE80x17";
+		RequestCmd[PGV100_Right_Request] = "0xE40x1B";
+		RequestCmd[PGV100_Red_Request] = "0x900x6F";
+		RequestCmd[PGV100_Green_Request] = "0x880x77";
+		RequestCmd[PGV100_Blue_Request] = "0xC40x3B";
+		RequestCmd[PGV100_Pos_Request] = "0xC80x37";
+		RequestCmd[PCV80_Pos_Requset] = "0xA00x5F";
 	}
 
 	void PNFPosSensor::ConstructCommunicationSetup()
@@ -80,12 +85,14 @@ namespace Nyamkani
 			MX_UART5_Init();
 			if(pos_buf_ == nullptr) pos_buf_ = &g_pnf_read_buffer_5;
 			if(pos_read_buffer_length_ == nullptr) pos_read_buffer_length_ = &g_pnf_buffer_length_5;
+			if(comm_time_ == nullptr) comm_time_ = &g_pnf_comm_time_5;
 		}
 		else if(this->port_ == 6)
 		{
 			MX_USART6_UART_Init();
 			if(pos_buf_ == nullptr) pos_buf_ = &g_pnf_read_buffer_6;
 			if(pos_read_buffer_length_ == nullptr) pos_read_buffer_length_ = &g_pnf_buffer_length_6;
+			if(comm_time_ == nullptr) comm_time_ = &g_pnf_comm_time_6;
 		}
 		//else {throw }
 	}
@@ -104,24 +111,35 @@ namespace Nyamkani
 	void PNFPosSensor::Init_Read_Buffer()
 	{
 		int& cmdstr = RequestQueue.front();
-		if(cmdstr == PGV100_Pos_Request) {*pos_read_buffer_length_ = pgv100pos;}
-		else if (cmdstr == PCV80_Pos_Requset){*pos_read_buffer_length_ = pcv80pos;}
-		else if (cmdstr == (PGV100_Straight_Request|PGV100_Left_Request|PGV100_Right_Request)) {*pos_read_buffer_length_ = pgv100dir;}
-		else {*pos_read_buffer_length_ = pgv100color;}
-		pos_buf_->assign(*pos_read_buffer_length_,0);
+		if(cmdstr == PGV100_Pos_Request) {this->max_read_buf_size_ = pgv100pos;}
+		else if (cmdstr == PCV80_Pos_Requset){this->max_read_buf_size_ = pcv80pos;}
+		else if (cmdstr == (PGV100_Straight_Request|PGV100_Left_Request|PGV100_Right_Request)) {this->max_read_buf_size_ = pgv100dir;}
+		else {this->max_read_buf_size_ = pgv100color;}
+
+		//resize vector length
+		pos_buf_->assign(this->max_read_buf_size_, 0);
+		//initialize numbering
+		*pos_read_buffer_length_ = 0;
 	}
 
-	//bool PNFPosSintensor::CommTimeOut()
-	//{
-//
-	//	return
-	//}
+	//--------------------------------------------------------------Sensor Utils
+	//for timeout Func.
 
-	//uint16_t PNFPosSintensor::CommTimeReduce()
-	//{
-//
-	//	return
-	//}
+	//due to using other files, this function may not be in class
+	void CommTimerTick(uint16_t *comm_time_)
+	{
+		if (*comm_time_ > 0) (*comm_time_)--;
+	}
+
+	void PNFPosSensor::CommTimerReset()
+	{
+		*comm_time_= this->reset_time_;
+	}
+
+	bool PNFPosSensor::CommTimerIsExpired()
+	{
+		return (*comm_time_ == 0);
+	}
 
 
 	//--------------------------------------------------------------Change parameters
@@ -190,7 +208,14 @@ namespace Nyamkani
 	//queue system functions
 	void PNFPosSensor::Queue_Save_Request(int cmd){this->RequestQueue.push(cmd);}
 	void PNFPosSensor::Queue_Delete_Request(){this->RequestQueue.pop();}
-
+	void PNFPosSensor::Queue_Repeat_Pos_Reqeust()
+	{
+		if(RequestQueue.empty())
+		{
+			if(sensor_type_ == pcv80) Request_Get_PCV80_Pos();
+			else Request_Get_PGV100_Pos();
+		}
+	}
 
 	//---------------------------------------------------------------send or read functions
 	void PNFPosSensor::Work_Send_Request()
@@ -208,11 +233,12 @@ namespace Nyamkani
 	}
 
 	//---------------------------------------------------------------Processing data
+	//for Error checking
 	uint16_t PNFPosSensor::Process_Checksum_Data()
 	{
 		 uint16_t temp = 0;
 		 uint16_t ChkSum_Data = 0;
-		 uint16_t even_cnt[*pos_read_buffer_length_]={0,};
+		 uint16_t even_cnt[max_read_buf_size_]={0,};
 
 		for(uint8_t i=0; i<7; i++)
 		{
@@ -246,7 +272,7 @@ namespace Nyamkani
 	     //--------------------------------------------------------------------
 		 uint16_t state = 0x0000;
 
-	     if((*pos_buf_)[(*pos_read_buffer_length_)-1] == Process_Checksum_Data())    //Checksum error pass or not(POS_BUF[20] <--- check sum buffer)
+	     if((*pos_buf_)[(max_read_buf_size_)-1] == Process_Checksum_Data())    //Checksum error pass or not(POS_BUF[20] <--- check sum buffer)
 	     {
 	          if((*pos_buf_)[0] & 0x01)    //Err Occured
 	          {
@@ -260,10 +286,26 @@ namespace Nyamkani
 	          else if((*pos_buf_)[0]&0x02) state |= noposition;    //No Position Error
 	     }
 	     else state |= checksumerr;        //check sum error
-	     //if(POS_CommTimer_IsExpired()) state |= commtimeout;        //Timeout(communication error)
+	     if(CommTimerIsExpired()) state |= commtimeout;        //Timeout(communication error)
 	     return state;
 	}
 
+	uint32_t PNFPosSensor::Process_Get_ERR_Info()
+	{
+		uint8_t a,b,c,d;
+		if(sensor_type_== pgv100){a = 4; b = 3; c = 2; d = 1;}
+		else if (sensor_type_== pcv80){a = 5; b = 4; c = 3; d = 2;}
+
+		uint32_t ERR_DATA = (int32_t)(*pos_buf_)[a];
+		(ERR_DATA)|=(int32_t)(*pos_buf_)[b] << 7;
+		(ERR_DATA)|=(int32_t)(*pos_buf_)[c] << 14;
+		(ERR_DATA)|=(int32_t)((*pos_buf_)[d]&0x07) << 21;
+		return ERR_DATA;
+	}
+
+
+
+	//for getting data
 	bool PNFPosSensor::Process_Is_Tag_Detected()
 	{
 		if((*pos_buf_)[1] & 0x40) return true;
@@ -328,12 +370,11 @@ namespace Nyamkani
 		return YPOS;
 	}
 
-	//for Chking Modes
 	uint8_t PNFPosSensor::Process_Get_Direction_Info()
 	{
 
 		if(Process_Is_Tag_Detected()) {return (uint8_t)(*pos_buf_)[1]&0x03;}
-		else return this_>dir_;
+		else return this->dir_;
 	}
 
 	uint8_t PNFPosSensor::Process_Get_Color_Info()
@@ -342,70 +383,76 @@ namespace Nyamkani
 		else return this->color_;
 	}
 
-	uint32_t PNFPosSensor::Process_Get_ERR_Info()
+	//for post filtering
+	bool PNFPosSensor::IsValueFiltered()
 	{
-	   uint32_t ERR_DATA = (int32_t)(*pos_buf_)[5];
-	  (ERR_DATA)|=(int32_t)(*pos_buf_)[4] << 7;
-	  (ERR_DATA)|=(int32_t)(*pos_buf_)[3] << 14;
-	  (ERR_DATA)|=(int32_t)((*pos_buf_)[2]&0x07) << 21;
-	  return ERR_DATA;
+		return (this->now_filter_cnt_>= this->max_filter_cnt_);
 	}
 
+	void PNFPosSensor::FilterCountUp()
+	{
+		if(this->now_filter_cnt_< this->max_filter_cnt_) this->now_filter_cnt_++;
+	}
+
+	void PNFPosSensor::FilterStatusChanged(){this->now_filter_cnt_ = 0;}
+
+
+	//finally we got combined function
 	uint16_t PNFPosSensor::Process_Get_Total_Info()
 	{
-		if(*pos_read_buffer_length_ != pgv100color)  //response the change colors
+		if(max_read_buf_size_ != pgv100color)  //response the change colors
 		{
-			//First error check
-			uint16_t error_state = Process_Check_Err();
-			if(error_state <= 0x02)
+			uint16_t prev_err_ = this->err_;
+			uint16_t now_err_ = Process_Check_Err();
+
+			//Error filters
+			if(prev_err_ != this->err_) FilterStatusChanged();
+
+			if(IsValueFiltered())
 			{
-				if((*pos_read_buffer_length_) = pgv100pos ||(*pos_read_buffer_length_ = pcv80pos))
+				if(now_err_ < 0x01)
 				{
-
+					switch(this->max_read_buf_size_)
+					{
+						case pgv100dir:
+							this->dir_ = Process_Get_Direction_Info();
+							break;
+						case pcv80pos:
+							this->xpos_ = Process_Get_XPos_Info(); 	 				  //--- Get X POSITION
+							this->ypos_ = Process_Get_YPos_Info(); 					  //--- Get Y POSITION
+							break;
+						case pgv100pos:
+							if(Process_Is_Tag_Detected()) this->tagNo_ = Process_Get_Tag_Number();
+							else this->tagNo_ = 0;
+							this->dir_ = Process_Get_Direction_Info();
+							this->angle_ = Process_Get_Angle_Info(); 	 			  //--- Get ANGLE INFO
+							this->xpos_ = Process_Get_XPos_Info(); 	 				  //--- Get X POSITION
+							this->ypos_ = Process_Get_YPos_Info(); 					  //--- Get Y POSITION
+							break;
+					}
+					this->err_ = 0x00;
 				}
-
+				else {this->err_ = now_err_;}
 			}
-
-
 		}
-		else
-		{
-			uint16_t color_buf_ = Process_Get_Color_Info();
-		}
-
-		//First error check
-		uint16_t error_state = Process_Check_Err();
-		if(error_state <= 0x02)
-		{
-			uint16_t dir_buf_ = Process_Get_Direction_Info();
-
-
-			uint16_t tagno_buf_ = 0;
-			if(Process_Is_Tag_Detected()) tagno_buf_ = Process_Get_Tag_Number();
-			uint16_t angle_buf_ = Process_Get_Angle_Info(); 	 			  //--- Get ANGLE INFO
-			uint16_t xpos_buf_ = Process_Get_XPos_Info(); 	 				  //--- Get X POSITION
-			uint16_t ypos_buf_ = Process_Get_YPos_Info(); 					  //--- Get Y POSITION
-
-			//uint16_t color_buf_;
-
-			if()
-
-
-		}
-	return error_state;
-
-
+		else{ this->color_ = Process_Get_Color_Info();}
+		return this->err_;
 	}
 
-	int PNFPosSensor::work_loop()
+
+	uint16_t PNFPosSensor::work_loop()
 	{
 		//One time initialization here
-
-			Init_Read_Buffer();
-			Work_Send_Request();
-			while(Buffer_Size || )
-			{
-				Work_Receive_Response();
-			}
-			Process_Data();
+		CommTimerReset();
+		Init_Read_Buffer();
+		Work_Send_Request();
+		while((*pos_read_buffer_length_) <= this->max_read_buf_size_)  //when the buffer reached specific values
+		{
+			Work_Receive_Response();
+			if(CommTimerIsExpired()) break;
+		}
+		Queue_Delete_Request();
+		Queue_Repeat_Pos_Reqeust();
+		return Process_Get_Total_Info(); //return errors
 	}
+}

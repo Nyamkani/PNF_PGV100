@@ -1,0 +1,76 @@
+/*
+ * CommonSensor.h
+ *
+ *  Created on: Jul 14, 2022
+ *      Author: studio3s
+ */
+#include "stm32f746xx.h"
+#include <math.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <vector>
+#include <string>
+
+
+#ifndef INC_EXTINC_COMMONSENSOR_H_
+#define INC_EXTINC_COMMONSENSOR_H_
+
+
+namespace Nyamkani
+{
+	enum ActiveHL
+	{
+		ActiveL = 0,
+		ActiveH = 1,
+	};
+
+	enum Output
+	{
+		Detected = 0,
+		Undetected = 1,
+	};
+
+
+
+	class CommonSensor
+	{
+		public:
+			CommonSensor();
+			CommonSensor(uint16_t SensorIndex, bool active_type,
+					   uint8_t max_filter_cnt, GPIO_TypeDef* GPIOx,
+					   uint32_t PinMask);
+
+			~CommonSensor();
+		private:
+			uint16_t SensorIndex_;
+			bool active_type_;
+			bool output_;
+
+			//pin configuration
+			GPIO_TypeDef* GPIOx_ = NULL;
+			uint32_t PinMask_ ;
+
+			//filters
+			uint8_t max_filter_cnt_ = 5;
+			uint8_t now_filter_cnt_= 0;
+			bool state = 0;
+
+			//functions
+			bool CheckSensorValue();
+
+
+			bool IsValueFiltered();
+			void FilterCountUp();
+			void FilterStatusChanged();
+
+		public:
+			void main_loop();
+			bool GetSensorValue() const;
+
+
+	};
+
+}
+
+
+#endif /* INC_EXTINC_COMMONSENSOR_H_ */

@@ -105,20 +105,35 @@ namespace Nyamkani
 		//Change_XOffset(1);
 		//Change_YOffset(1);
 		//Change_Angle_Offset(1);
-		Request_Change_Dir_straight();
+		RequestChangeDirstraight();
 
 	}
 
 
 	//Initialization for work-loop
-	void PNFPosSensor::Init_Read_Buffer()
+	void PNFPosSensor::InitReadBuffer()
 	{
-		int& cmdstr = RequestQueue.front();
+		//int& cmdstr = RequestQueue.front();
+		switch(RequestQueue.front())
+		{
+			//position
+			case PGV100_Pos_Request: this->max_read_buf_size_ = pgv100pos; break;
+			case PCV80_Pos_Requset: this->max_read_buf_size_ = pcv80pos; break;
+			//Directions
+			case PGV100_Straight_Request: this->max_read_buf_size_ = pgv100dir; break;
+			case PGV100_Left_Request: this->max_read_buf_size_ = pgv100dir; break;
+			case PGV100_Right_Request: this->max_read_buf_size_ = pgv100dir; break;
+			//Colors
+			case PGV100_Red_Request: this->max_read_buf_size_ = pgv100color; break;
+			case PGV100_Green_Request: this->max_read_buf_size_ = pgv100color; break;
+			case PGV100_Blue_Request: this->max_read_buf_size_ = pgv100color; break;
+		}
+		/*
 		if(cmdstr == PGV100_Pos_Request) {this->max_read_buf_size_ = pgv100pos;}
 		else if (cmdstr == PCV80_Pos_Requset){this->max_read_buf_size_ = pcv80pos;}
 		else if (cmdstr == (PGV100_Straight_Request|PGV100_Left_Request|PGV100_Right_Request)) {this->max_read_buf_size_ = pgv100dir;}
 		else {this->max_read_buf_size_ = pgv100color;}
-
+*/
 		//resize vector length
 		pos_buf_->assign(this->max_read_buf_size_, 0);
 		//initialize numbering
@@ -150,20 +165,20 @@ namespace Nyamkani
 	//void PNFPosSensor::Change_Buffer_size(uint16_t Buffer_Size) {this->Buffer_Size_ = Buffer_Size;}
 
 	//param use
-	PNFPosSensor& PNFPosSensor::Change_XOffset(double X_Offset)
+	PNFPosSensor& PNFPosSensor::ChangeXOffset(double X_Offset)
 	{
 		this->x_offset_ = X_Offset;
 		return* this;
 	}
 
-	PNFPosSensor& PNFPosSensor::Change_YOffset(double Y_Offset)
+	PNFPosSensor& PNFPosSensor::ChangeYOffset(double Y_Offset)
 	{
 		this->y_offset_ = Y_Offset;
 		return* this;
 	}
 
 	//pgv100 param only
-	PNFPosSensor& PNFPosSensor::Change_Angle_Offset(double Angle_Offset)
+	PNFPosSensor& PNFPosSensor::ChangeAngleOffset(double Angle_Offset)
 	{
 		this->angle_offset_ = Angle_Offset;
 		return* this;
@@ -172,72 +187,71 @@ namespace Nyamkani
 
 	//---------------------------------------------------------------Request command
 	//pgv100 only
-	void PNFPosSensor::Request_Change_Dir_straight() {Queue_Save_Request(PGV100_Straight_Request);}
-	void PNFPosSensor::Request_Change_Dir_left() {Queue_Save_Request(PGV100_Left_Request);}
-	void PNFPosSensor::Request_Change_Dir_right() {Queue_Save_Request(PGV100_Right_Request);}
+	void PNFPosSensor::RequestChangeDirstraight() {QueueSaveRequest(PGV100_Straight_Request);}
+	void PNFPosSensor::RequestChangeDirleft() {QueueSaveRequest(PGV100_Left_Request);}
+	void PNFPosSensor::RequestChangeDirright() {QueueSaveRequest(PGV100_Right_Request);}
 
-	void PNFPosSensor::Request_Change_Color_yellow() {Queue_Save_Request(PGV100_Red_Request);}
-	void PNFPosSensor::Request_Change_Color_red() {Queue_Save_Request(PGV100_Green_Request);}
-	void PNFPosSensor::Request_Change_Color_blue() {Queue_Save_Request(PGV100_Blue_Request);}
+	void PNFPosSensor::RequestChangeColoryellow() {QueueSaveRequest(PGV100_Red_Request);}
+	void PNFPosSensor::RequestChangeColorred() {QueueSaveRequest(PGV100_Green_Request);}
+	void PNFPosSensor::RequestChangeColorblue() {QueueSaveRequest(PGV100_Blue_Request);}
 
-	void PNFPosSensor::Request_Get_PGV100_Pos() {Queue_Save_Request(PGV100_Pos_Request);}
+	void PNFPosSensor::RequestGetPGV100Pos() {QueueSaveRequest(PGV100_Pos_Request);}
 
 	//pcv80 only
-	void PNFPosSensor::Request_Get_PCV80_Pos() {Queue_Save_Request(PCV80_Pos_Requset);}
+	void PNFPosSensor::RequestGetPCV80Pos() {QueueSaveRequest(PCV80_Pos_Requset);}
 
 
 
 	//---------------------------------------------------------------return value functions
-	double PNFPosSensor::Get_XPos() const {return xpos_;}
-	double PNFPosSensor::Get_YPos() const {return ypos_;}
-	double PNFPosSensor::Get_Angle() const {return angle_;}
-	uint16_t PNFPosSensor::Get_TagNo() const {return tagNo_;}
-	uint8_t PNFPosSensor::Get_Dir() const {return dir_;}
-	uint8_t PNFPosSensor::Get_Color() const {return color_;}
-	uint32_t PNFPosSensor::Get_SensorErr() const {return err_;}
+	double PNFPosSensor::GetXPos() const {return xpos_;}
+	double PNFPosSensor::GetYPos() const {return ypos_;}
+	double PNFPosSensor::GetAngle() const {return angle_;}
+	uint16_t PNFPosSensor::GetTagNo() const {return tagNo_;}
+	uint8_t PNFPosSensor::GetDir() const {return dir_;}
+	uint8_t PNFPosSensor::GetColor() const {return color_;}
+	uint32_t PNFPosSensor::GetSensorErr() const {return err_;}
 
-	double PNFPosSensor::X_Offset() const {return x_offset_;}
-	double PNFPosSensor::Y_Offset() const {return y_offset_;};
-	double PNFPosSensor::Angle_Offset() const {return angle_offset_;}
+	double PNFPosSensor::GetXOffset() const {return x_offset_;}
+	double PNFPosSensor::GetYOffset() const {return y_offset_;};
+	double PNFPosSensor::GetAngleOffset() const {return angle_offset_;}
 	//uint8_t PNFPosSensor::OStype() const {return OStype_;};
-	uint8_t PNFPosSensor::Commtype() const {return comm_type_;}
-	uint8_t PNFPosSensor::Port() const {return port_;}
-	uint8_t PNFPosSensor::PNFSensorType() const {return sensor_type_;}
+	uint8_t PNFPosSensor::GetCommtype() const {return comm_type_;}
+	uint8_t PNFPosSensor::GetPort() const {return port_;}
+	uint8_t PNFPosSensor::GetPNFSensorType() const {return sensor_type_;}
 
 
 
 
 	//---------------------------------------------------------------Command queue functions
 	//queue system functions
-	void PNFPosSensor::Queue_Save_Request(int cmd){this->RequestQueue.push(cmd);}
-	void PNFPosSensor::Queue_Delete_Request(){this->RequestQueue.pop();}
-	void PNFPosSensor::Queue_Repeat_Pos_Reqeust()
+	void PNFPosSensor::QueueSaveRequest(int cmd){this->RequestQueue.push(cmd);}
+	void PNFPosSensor::QueueDeleteRequest(){this->RequestQueue.pop();}
+	void PNFPosSensor::QueueRepeatPosReqeust()
 	{
 		if(RequestQueue.empty())
 		{
-			if(sensor_type_ == pcv80) Request_Get_PCV80_Pos();
-			else Request_Get_PGV100_Pos();
+			if(sensor_type_ == pcv80) RequestGetPCV80Pos();
+			else RequestGetPGV100Pos();
 		}
 	}
 
 	//---------------------------------------------------------------send or read functions
-	void PNFPosSensor::Work_Send_Request()
+	void PNFPosSensor::WorkSendRequest()
 	{
 		/*write functions start*/
-		Usart_Transmit(this->USARTx, RequestCmd[RequestQueue.front()]);
+		UsartTransmit(this->USARTx, RequestCmd[RequestQueue.front()]);
 		/*write functions end*/
 	}
 
-	void PNFPosSensor::Work_Receive_Response()
+	void PNFPosSensor::WorkReceiveResponse()
 	{
 		/*Read functions*/
-		Usart_Receive(this->USARTx);
-
+		UsartReceive(this->USARTx);
 	}
 
 	//---------------------------------------------------------------Processing data
 	//for Error checking
-	uint16_t PNFPosSensor::Process_Checksum_Data()
+	uint16_t PNFPosSensor::ProcessChecksumData()
 	{
 		 uint16_t temp = 0;
 		 uint16_t ChkSum_Data = 0;
@@ -255,7 +269,7 @@ namespace Nyamkani
 	     return ChkSum_Data;
 	}
 
-	uint16_t PNFPosSensor::Process_Check_Err()
+	uint16_t PNFPosSensor::ProcessCheckErr()
 	{
 	      //------------------------------------------------------------------
 	     //STATE
@@ -275,11 +289,11 @@ namespace Nyamkani
 	     //--------------------------------------------------------------------
 		 uint16_t state = 0x0000;
 
-	     if((*pos_buf_)[(max_read_buf_size_)-1] == Process_Checksum_Data())    //Checksum error pass or not(POS_BUF[20] <--- check sum buffer)
+	     if((*pos_buf_)[(max_read_buf_size_)-1] == ProcessChecksumData())    //Checksum error pass or not(POS_BUF[20] <--- check sum buffer)
 	     {
 	          if((*pos_buf_)[0] & 0x01)    //Err Occured
 	          {
-	               uint16_t errcode =  Process_Get_ERR_Info();
+	               uint16_t errcode =  ProcessGetERRInfo();
 	               if(errcode>1000) state |= internalFatal;        //Internal Fatal Error
 	               else if(errcode==1) state |= readheadtilted;     //read head tilted 180°.(pcv80 only)
 	               else if(errcode==2) state |= codeconditionerr;     //code condition error(code distance chk)
@@ -293,49 +307,49 @@ namespace Nyamkani
 	     return state;
 	}
 
-	uint32_t PNFPosSensor::Process_Get_ERR_Info()
+	uint32_t PNFPosSensor::ProcessGetERRInfo()
 	{
 		uint8_t a,b,c,d;
 		if(sensor_type_== pgv100){a = 4; b = 3; c = 2; d = 1;}
 		else if (sensor_type_== pcv80){a = 5; b = 4; c = 3; d = 2;}
 
-		uint32_t ERR_DATA = (int32_t)(*pos_buf_)[a];
-		(ERR_DATA)|=(int32_t)(*pos_buf_)[b] << 7;
-		(ERR_DATA)|=(int32_t)(*pos_buf_)[c] << 14;
-		(ERR_DATA)|=(int32_t)((*pos_buf_)[d]&0x07) << 21;
-		return ERR_DATA;
+		uint32_t err_data = (int32_t)(*pos_buf_)[a];
+		(err_data)|=(int32_t)(*pos_buf_)[b] << 7;
+		(err_data)|=(int32_t)(*pos_buf_)[c] << 14;
+		(err_data)|=(int32_t)((*pos_buf_)[d]&0x07) << 21;
+		return err_data;
 	}
 
 
 
 	//for getting data
-	bool PNFPosSensor::Process_Is_Tag_Detected()
+	bool PNFPosSensor::ProcessIsTagDetected()
 	{
 		if((*pos_buf_)[1] & 0x40) return true;
 		else return false;
 	}
 
-	uint16_t PNFPosSensor::Process_Get_Tag_Number()
+	uint16_t PNFPosSensor::ProcessGetTagNumber()
 	{
-	     int16_t TagNum = 0;
-		 (TagNum)=(int32_t)(*pos_buf_)[17];
-		 (TagNum)|=(int32_t)(*pos_buf_)[16]<<7;
-		 (TagNum)|=(int32_t)(*pos_buf_)[15]<<14;
-		 (TagNum)|=(int32_t)(*pos_buf_)[14]<<21;
-		 return TagNum;
+	     int16_t tag_num = 0;
+		 (tag_num)=(int32_t)(*pos_buf_)[17];
+		 (tag_num)|=(int32_t)(*pos_buf_)[16]<<7;
+		 (tag_num)|=(int32_t)(*pos_buf_)[15]<<14;
+		 (tag_num)|=(int32_t)(*pos_buf_)[14]<<21;
+		 return tag_num;
 	}
 
-	double PNFPosSensor::Process_Get_Angle_Info()
+	double PNFPosSensor::ProcessGetAngleInfo()
 	{
-		  uint16_t ANGLE=(uint16_t)(*pos_buf_)[11];
-	     (ANGLE)|=(uint16_t)(*pos_buf_)[10] << 7;
+		  uint16_t angle=(uint16_t)(*pos_buf_)[11];
+	     (angle)|=(uint16_t)(*pos_buf_)[10] << 7;
 
-	     (ANGLE)=(uint16_t)(((ANGLE)/10));
-	     if((ANGLE)> 180.0f) ANGLE-=360.0f; //makes x-axis zero centered
-	     return ANGLE + this->angle_offset_;
+	     (angle)=(uint16_t)(((angle)/10));
+	     if((angle)> 180.0f) angle-=360.0f; //makes x-axis zero centered
+	     return angle + this->angle_offset_;
 	}
 
-	double PNFPosSensor::Process_Get_XPos_Info()
+	double PNFPosSensor::ProcessGetXPosInfo()
 	{
 		uint8_t a,b,c,d;
 		if(sensor_type_== pgv100){a = 4; b = 3; c = 2; d = 1;}
@@ -345,42 +359,42 @@ namespace Nyamkani
 		(XPosition_DATA)|=(int32_t)(*pos_buf_)[b] << 7;
 		(XPosition_DATA)|=(int32_t)(*pos_buf_)[c] << 14;
 		(XPosition_DATA)|=(int32_t)((*pos_buf_)[d]&0x07) << 21;
-		double XPOS=(double)(XPosition_DATA/(10000.0f));                   //To make units milimeters to meters
+		double xpos=(double)(XPosition_DATA/(10000.0f));                   //To make units milimeters to meters
 
 	     //for making X-axis center to zero
 	     if(sensor_type_== pgv100)
 	     {
-	    	 if(XPOS>=10) XPOS = (double)(XPOS-((double)(pow(2,24)-1)/(10000.0f))-(this->x_offset_));
-	    	 else XPOS = (XPOS-(this->x_offset_));
+	    	 if(xpos>=10) xpos = (double)(xpos-((double)(pow(2,24)-1)/(10000.0f))-(this->x_offset_));
+	    	 else xpos = (xpos-(this->x_offset_));
 	     }
 
-		if(XPOS >= this->POS_AREA_MIN && XPOS <= this->POS_AREA_MAX) return XPOS;
+		if(xpos >= this->POS_AREA_MIN && xpos <= this->POS_AREA_MAX) return xpos;
 		else return this->xpos_;  //	  else { state |= 0x0010;} //Out of Range
 	}
 
-	double PNFPosSensor::Process_Get_YPos_Info()
+	double PNFPosSensor::ProcessGetYPosInfo()
 	{
 		int32_t YPosition_DATA=(int32_t)(*pos_buf_)[7];//Y Buf
 		(YPosition_DATA)|=((int32_t)(*pos_buf_)[6]) << 7;
-		double YPOS=(double)(YPosition_DATA/(10000.0f));              //To make units milimen));
+		double ypos=(double)(YPosition_DATA/(10000.0f));              //To make units milimen));
 
 		//for making Y-axis center to zero
 		if(this->sensor_type_== pgv100)
 		{
-			if(YPOS>=0.1) YPOS = (double)(YPOS-((double)(16383.0)/(10000.0f))-(this->y_offset_));
-			else YPOS = (YPOS-(this->y_offset_));
+			if(ypos>=0.1) ypos = (double)(ypos-((double)(16383.0)/(10000.0f))-(this->y_offset_));
+			else ypos = (ypos-(this->y_offset_));
 		}
-		return YPOS;
+		return ypos;
 	}
 
-	uint8_t PNFPosSensor::Process_Get_Direction_Info()
+	uint8_t PNFPosSensor::ProcessGetDirectionInfo()
 	{
 
-		if(Process_Is_Tag_Detected()) {return (uint8_t)(*pos_buf_)[1]&0x03;}
+		if(ProcessIsTagDetected()) {return (uint8_t)(*pos_buf_)[1]&0x03;}
 		else return this->dir_;
 	}
 
-	uint8_t PNFPosSensor::Process_Get_Color_Info()
+	uint8_t PNFPosSensor::ProcessGetColorInfo()
 	{
 		if((*pos_buf_)[0]&0x07 && (*pos_buf_)[1]&0x07) return (uint8_t)(*pos_buf_)[1]&0x07;
 		else return this->color_;
@@ -401,15 +415,16 @@ namespace Nyamkani
 
 
 	//finally we got combined function
-	uint16_t PNFPosSensor::Process_Get_Total_Info()
+	uint16_t PNFPosSensor::ProcessGetTotalInfo()
 	{
 		if(max_read_buf_size_ != pgv100color)  //response the change colors
 		{
 			uint16_t prev_err_ = this->err_;
-			uint16_t now_err_ = Process_Check_Err();
+			uint16_t now_err_ = ProcessCheckErr();
 
 			//Error filters
 			if(prev_err_ != this->err_) FilterStatusChanged();
+			else FilterCountUp();
 
 			if(IsValueFiltered())
 			{
@@ -418,19 +433,19 @@ namespace Nyamkani
 					switch(this->max_read_buf_size_)
 					{
 						case pgv100dir:
-							this->dir_ = Process_Get_Direction_Info();
+							this->dir_ = ProcessGetDirectionInfo();
 							break;
 						case pcv80pos:
-							this->xpos_ = Process_Get_XPos_Info(); 	 				  //--- Get X POSITION
-							this->ypos_ = Process_Get_YPos_Info(); 					  //--- Get Y POSITION
+							this->xpos_ = ProcessGetXPosInfo(); 	 				  //--- Get X POSITION
+							this->ypos_ = ProcessGetYPosInfo(); 					  //--- Get Y POSITION
 							break;
 						case pgv100pos:
-							if(Process_Is_Tag_Detected()) this->tagNo_ = Process_Get_Tag_Number();
+							if(ProcessIsTagDetected()) this->tagNo_ = ProcessGetTagNumber();
 							else this->tagNo_ = 0;
-							this->dir_ = Process_Get_Direction_Info();
-							this->angle_ = Process_Get_Angle_Info(); 	 			  //--- Get ANGLE INFO
-							this->xpos_ = Process_Get_XPos_Info(); 	 				  //--- Get X POSITION
-							this->ypos_ = Process_Get_YPos_Info(); 					  //--- Get Y POSITION
+							this->dir_ = ProcessGetDirectionInfo();
+							this->angle_ = ProcessGetAngleInfo(); 	 			  //--- Get ANGLE INFO
+							this->xpos_ = ProcessGetXPosInfo(); 	 				  //--- Get X POSITION
+							this->ypos_ = ProcessGetYPosInfo(); 					  //--- Get Y POSITION
 							break;
 					}
 					this->err_ = 0x00;
@@ -438,7 +453,7 @@ namespace Nyamkani
 				else {this->err_ = now_err_;}
 			}
 		}
-		else{ this->color_ = Process_Get_Color_Info();}
+		else{ this->color_ = ProcessGetColorInfo();}
 		return this->err_;
 	}
 
@@ -447,15 +462,25 @@ namespace Nyamkani
 	{
 		//One time initialization here
 		CommTimerReset();
-		Init_Read_Buffer();
-		Work_Send_Request();
+		InitReadBuffer();
+		WorkSendRequest();
 		while((*pos_read_buffer_counter_) <= this->max_read_buf_size_)  //when the buffer reached specific values
 		{
-			Work_Receive_Response();
+			WorkReceiveResponse();
 			if(CommTimerIsExpired()) break;
 		}
-		Queue_Delete_Request();
-		Queue_Repeat_Pos_Reqeust();
-		return Process_Get_Total_Info(); //return errors
+		QueueDeleteRequest();
+		QueueRepeatPosReqeust();
+		return ProcessGetTotalInfo(); //return errors
 	}
+
+	uint16_t PNFPosSensor::main_loop()
+	{
+		ConstructRequsetCmd();
+		ConstructCommunicationSetup();
+		ConstructDefaultParam();
+		while(work_loop() != 1){}
+		return 0;
+	}
+
 }

@@ -18,8 +18,8 @@
 #include <vector>
 #include <string>
 
-void Usart_Transmit(USART_TypeDef *USARTx, std::string data);
-void Usart_Receive(USART_TypeDef *USARTx);
+void UsartTransmit(USART_TypeDef *USARTx, std::string data);
+void UsartReceive(USART_TypeDef *USARTx);
 
 
 

@@ -37,7 +37,7 @@ int Usart_Write(USART_TypeDef *USARTx, std::vector<uint16_t> data)
 
 
 
-void Usart_Transmit(USART_TypeDef *USARTx, std::string data)
+void UsartTransmit(USART_TypeDef *USARTx, std::string data)
 {
 	uint16_t datalength = data.size();
 	for(uint16_t i=0;i<datalength;i++){
@@ -50,7 +50,7 @@ void Usart_Transmit(USART_TypeDef *USARTx, std::string data)
 
 
 
-void Usart_Receive(USART_TypeDef *USARTx)
+void UsartReceive(USART_TypeDef *USARTx)
 {
 	/* USER CODE BEGIN 2 */
 	LL_USART_EnableIT_RXNE(USARTx);

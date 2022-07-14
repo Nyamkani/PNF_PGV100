@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include <Extinc/PNFPosSensor.h>
+#include <Extinc/CommonSensor.h>
 #include "main.h"
 #include "cmsis_os.h"
 #include "lwip.h"
@@ -148,7 +149,12 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	Nyamkani::PNFPosSensor PGV100(1, 0, 5, 10.0, 10.0, 15.0);
+	auto PGV100 = new Nyamkani::PNFPosSensor(1, 0, 5, 10.0, 10.0, 15.0);
+	if(PGV100->main_loop()==1) delete PGV100;
+	auto ORGSENSOR = new Nyamkani::CommonSensor(0x01, 1, 5, GPIOA, LL_GPIO_PIN_12);
+	ORGSENSOR->main_loop();
+	auto val = ORGSENSOR->GetSensorValue();
+	printf("%d", val);
 
     /* USER CODE BEGIN 3 */
   }

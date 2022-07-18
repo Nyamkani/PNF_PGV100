@@ -51,6 +51,13 @@ namespace Nyamkani
           ethernet = 2,
      };
 
+     enum Port
+     {
+          port_5 = 5,
+		  port_6 = 6,
+     };
+
+
      enum PGV100_Dir
 	 {
     	 straight = 0,
@@ -181,9 +188,9 @@ namespace Nyamkani
 				std::queue<int> RequestQueue;
 
 				///First Time setup
-				void ConstructRequsetCmd();
-				void ConstructCommunicationSetup();
-				void ConstructDefaultParam();
+				void RegisterRequsetCmd();
+				void RegisterCommunicationSetup();
+				void RegisterDefaultParam();
 
 				//Initialization for work-loop
 				void InitReadBuffer();
@@ -245,9 +252,9 @@ namespace Nyamkani
 				//-----------------------------------------------------------------------Change parameters
 
 				//void ChangeBuffersize(uint16_t Buffer_Size);
-				PNFPosSensor& ChangeXOffset(double X_Offset);
-				PNFPosSensor& ChangeYOffset(double Y_Offset);
-				PNFPosSensor& ChangeAngleOffset(double Angle_Offset);
+				PNFPosSensor& SetXOffset(double X_Offset);
+				PNFPosSensor& SetYOffset(double Y_Offset);
+				PNFPosSensor& SetAngleOffset(double Angle_Offset);
 
 
 				//----------------------------------------------------------------------Requset command
@@ -263,7 +270,7 @@ namespace Nyamkani
 				void RequestGetPCV80Pos();
 
 				//main
-				uint16_t work_loop();
+				uint16_t Initializaition();
 				uint16_t main_loop();
      };
 

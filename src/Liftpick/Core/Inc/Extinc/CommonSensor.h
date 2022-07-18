@@ -30,19 +30,23 @@ namespace Nyamkani
 		Undetected = 1,
 	};
 
-
+	enum FilterMounts
+	{
+		Filter_0 = 0,
+		Filter_5 = 5,
+		Filter_10 = 10,
+	};
 
 	class CommonSensor
 	{
 		public:
 			CommonSensor();
-			CommonSensor(uint16_t SensorIndex, bool active_type,
-					   uint8_t max_filter_cnt, GPIO_TypeDef* GPIOx,
-					   uint32_t PinMask);
+			CommonSensor(uint16_t index, bool active_type, uint8_t max_filter_cnt,
+					GPIO_TypeDef* GPIOx, uint32_t PinMask);
 
 			~CommonSensor();
 		private:
-			uint16_t SensorIndex_;
+			uint16_t index_;
 			bool active_type_;
 			bool output_;
 
@@ -65,8 +69,8 @@ namespace Nyamkani
 
 		public:
 			void main_loop();
-			bool GetSensorValue() const;
-
+			bool GetSensorData() const;
+			uint16_t GetSensorIndex() const;
 
 	};
 

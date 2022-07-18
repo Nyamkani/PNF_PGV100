@@ -67,7 +67,7 @@ namespace Nyamkani
 	/*Queue - queue systems ->Queue*/
 
 	//--------------------------------------------------------------Construct level - network, first parmas. declation
-	void PNFPosSensor::ConstructRequsetCmd()
+	void PNFPosSensor::RegisterRequsetCmd()
 	{
 		RequestCmd[PGV100_Straight_Request] = "0xEC0x13";
 		RequestCmd[PGV100_Left_Request] = "0xE80x17";
@@ -79,7 +79,7 @@ namespace Nyamkani
 		RequestCmd[PCV80_Pos_Requset] = "0xA00x5F";
 	}
 
-	void PNFPosSensor::ConstructCommunicationSetup()
+	void PNFPosSensor::RegisterCommunicationSetup()
 	{
 		if(this->port_ == 5)
 		{
@@ -100,7 +100,7 @@ namespace Nyamkani
 		//else {throw }
 	}
 
-	void PNFPosSensor::ConstructDefaultParam()
+	void PNFPosSensor::RegisterDefaultParam()
 	{
 		//Change_XOffset(1);
 		//Change_YOffset(1);
@@ -160,25 +160,25 @@ namespace Nyamkani
 	}
 
 
-	//--------------------------------------------------------------Change parameters
+	//--------------------------------------------------------------Set parameters
 	//Common use
 	//void PNFPosSensor::Change_Buffer_size(uint16_t Buffer_Size) {this->Buffer_Size_ = Buffer_Size;}
 
 	//param use
-	PNFPosSensor& PNFPosSensor::ChangeXOffset(double X_Offset)
+	PNFPosSensor& PNFPosSensor::SetXOffset(double X_Offset)
 	{
 		this->x_offset_ = X_Offset;
 		return* this;
 	}
 
-	PNFPosSensor& PNFPosSensor::ChangeYOffset(double Y_Offset)
+	PNFPosSensor& PNFPosSensor::SetYOffset(double Y_Offset)
 	{
 		this->y_offset_ = Y_Offset;
 		return* this;
 	}
 
 	//pgv100 param only
-	PNFPosSensor& PNFPosSensor::ChangeAngleOffset(double Angle_Offset)
+	PNFPosSensor& PNFPosSensor::SetAngleOffset(double Angle_Offset)
 	{
 		this->angle_offset_ = Angle_Offset;
 		return* this;
@@ -457,8 +457,17 @@ namespace Nyamkani
 		return this->err_;
 	}
 
+	uint16_t PNFPosSensor::Initializaition()
+	{
+		RegisterRequsetCmd();
+		RegisterCommunicationSetup();
+		RegisterDefaultParam();
+		return 0;
+	}
 
-	uint16_t PNFPosSensor::work_loop()
+
+
+	uint16_t PNFPosSensor::main_loop()
 	{
 		//One time initialization here
 		CommTimerReset();
@@ -472,15 +481,6 @@ namespace Nyamkani
 		QueueDeleteRequest();
 		QueueRepeatPosReqeust();
 		return ProcessGetTotalInfo(); //return errors
-	}
-
-	uint16_t PNFPosSensor::main_loop()
-	{
-		ConstructRequsetCmd();
-		ConstructCommunicationSetup();
-		ConstructDefaultParam();
-		while(work_loop() != 1){}
-		return 0;
 	}
 
 }

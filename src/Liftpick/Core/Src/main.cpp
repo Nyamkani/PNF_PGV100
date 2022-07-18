@@ -23,6 +23,7 @@
 #include "cmsis_os.h"
 #include "lwip.h"
 #include "Extinc/api_init.h"
+#include "Extinc/IntegratedSensorManager.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -74,6 +75,10 @@ const osThreadAttr_t defaultTask_attributes = {
   * @brief  The application entry point.
   * @retval int
   */
+
+//extern bool Nyamkani::SensorManager::bDestroyed;
+//extern Nyamkani::SensorManager* Nyamkani::SensorManager::pIns;
+
 int main(void)
 {
   /* USER CODE BEGIN 1 */
@@ -146,15 +151,27 @@ int main(void)
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+
   while (1)
   {
+	  Nyamkani::SensorManager::GetInstance().RegisterCommonSensor();
+	  Nyamkani::SensorManager::GetInstance().RegisterPNFPosSensor();
+	  Nyamkani::SensorManager::GetInstance().PNFPosSensorInitialize();
+
+	  Nyamkani::SensorManager::GetInstance().CommonSensorsGetValue();
+	  Nyamkani::SensorManager::GetInstance().PNFPosSensorGetValue();
+
+
+
+	  //Nyamkani::SensorManager::GetInstance()->test();
     /* USER CODE END WHILE */
-	auto PGV100 = new Nyamkani::PNFPosSensor(1, 0, 5, 10.0, 10.0, 15.0);
-	if(PGV100->main_loop()==1) delete PGV100;
-	auto ORGSENSOR = new Nyamkani::CommonSensor(0x01, 1, 5, GPIOA, LL_GPIO_PIN_12);
-	ORGSENSOR->main_loop();
-	auto val = ORGSENSOR->GetSensorValue();
-	printf("%d", val);
+	//auto PGV100 = new Nyamkani::PNFPosSensor(1, 0, 5, 10.0, 10.0, 15.0);
+	//if(PGV100->main_loop()==1) delete PGV100;
+	//auto ORGSENSOR = new Nyamkani::CommonSensor(0x01, 1, 5, GPIOA, LL_GPIO_PIN_12);
+	//ORGSENSOR->main_loop();
+	//auto val = ORGSENSOR->GetSensorValue();
+	//printf("%d", val);
 
     /* USER CODE BEGIN 3 */
   }

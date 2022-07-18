@@ -12,18 +12,19 @@ namespace Nyamkani
 {
 	CommonSensor::CommonSensor(){}
 
-	CommonSensor::CommonSensor(uint16_t SensorIndex, bool active_type,
-							   uint8_t max_filter_cnt, GPIO_TypeDef* GPIOx,
-							   uint32_t PinMask)
+	CommonSensor::CommonSensor(uint16_t index, bool active_type, uint8_t max_filter_cnt,
+			GPIO_TypeDef* GPIOx, uint32_t PinMask)
 	{
-		this->SensorIndex_ = SensorIndex;
+		this->index_ = index;
 		this->active_type_ = active_type;
 		this->max_filter_cnt_ = max_filter_cnt;
 		if(this->GPIOx_ == nullptr ) this->GPIOx_ = GPIOx;
 		this->PinMask_ = PinMask;
 	}
 
-	bool CommonSensor::GetSensorValue() const {return this->output_;}
+	bool CommonSensor::GetSensorData() const {return this->output_;}
+
+	uint16_t CommonSensor::GetSensorIndex() const {return this->index_;}
 
 
 	bool CommonSensor::CheckSensorValue()

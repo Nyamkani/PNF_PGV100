@@ -234,7 +234,15 @@ void UART4_IRQHandler(void)
 void UART5_IRQHandler(void)
 {
   /* USER CODE BEGIN UART5_IRQn 0 */
-
+    if(LL_USART_IsActiveFlag_RXNE(UART5)){
+        //LL_USART_ClearFlag_RXNE(USART6);
+    	UART5->ISR &= ~LL_USART_ISR_RXNE;
+    	g_pnf_read_buffer_5[g_pnf_buffer_counter_5]=LL_USART_ReceiveData9(UART5);
+    	g_pnf_buffer_counter_5++;
+    }
+    if(LL_USART_IsActiveFlag_IDLE(UART5)){
+        LL_USART_ClearFlag_IDLE(UART5);
+    }
   /* USER CODE END UART5_IRQn 0 */
   /* USER CODE BEGIN UART5_IRQn 1 */
 
@@ -278,7 +286,7 @@ void USART6_IRQHandler(void)
     if(LL_USART_IsActiveFlag_RXNE(USART6)){
         //LL_USART_ClearFlag_RXNE(USART6);
     	USART6->ISR &= ~LL_USART_ISR_RXNE;
-    	g_pnf_read_buffer_6[g_pnf_buffer_counter_6]=LL_USART_ReceiveData8(USART6);
+    	g_pnf_read_buffer_6[g_pnf_buffer_counter_6]=LL_USART_ReceiveData9(USART6);
     	g_pnf_buffer_counter_6++;
     }
     if(LL_USART_IsActiveFlag_IDLE(USART6)){

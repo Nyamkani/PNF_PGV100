@@ -211,24 +211,24 @@ namespace Nyamkani
 				void WorkReceiveResponse();
 
 				//---------------------------------------------------------------Processing data
-				uint16_t ProcessChecksumData();
-				uint16_t ProcessCheckErr();
+				uint16_t ProcessChecksumData(std::vector<uint16_t> temp_buf);
+				uint16_t ProcessCheckErr(std::vector<uint16_t> temp_buf);
 
 
 
-				bool ProcessIsTagDetected();
-				uint16_t ProcessGetTagNumber();
-				double ProcessGetAngleInfo();
-				double ProcessGetXPosInfo();
-				double ProcessGetYPosInfo();
-				uint8_t ProcessGetDirectionInfo();
-				uint8_t ProcessGetColorInfo();
+				bool ProcessIsTagDetected(std::vector<uint16_t> temp_buf);
+				uint16_t ProcessGetTagNumber(std::vector<uint16_t> temp_buf);
+				double ProcessGetAngleInfo(std::vector<uint16_t> temp_buf);
+				double ProcessGetXPosInfo(std::vector<uint16_t> temp_buf);
+				double ProcessGetYPosInfo(std::vector<uint16_t> temp_buf);
+				uint8_t ProcessGetDirectionInfo(std::vector<uint16_t> temp_buf);
+				uint8_t ProcessGetColorInfo(std::vector<uint16_t> temp_buf);
 
 				bool IsValueFiltered();
 				void FilterCountUp();
 				void FilterStatusChanged();
 
-				uint32_t ProcessGetERRInfo();
+				uint32_t ProcessGetERRInfo(std::vector<uint16_t> temp_buf);
 				uint16_t ProcessGetTotalInfo();
 
 		  public:

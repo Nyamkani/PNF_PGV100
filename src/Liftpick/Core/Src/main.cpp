@@ -164,6 +164,8 @@ int main(void)
 
 
 
+
+
 	  //Nyamkani::SensorManager::GetInstance()->test();
     /* USER CODE END WHILE */
 	//auto PGV100 = new Nyamkani::PNFPosSensor(1, 0, 5, 10.0, 10.0, 15.0);

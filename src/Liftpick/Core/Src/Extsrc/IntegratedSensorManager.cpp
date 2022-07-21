@@ -87,12 +87,6 @@ namespace Nyamkani
 		common_sensors_.resize(common_sensors_.size());
 	}
 
-	//void SensorManager::CommonSensorInitialize()
-	//{
-	//	for (auto& index : common_sensors_) index->initialization();
-	//}
-
-
 	void SensorManager::CommonSensorsGetValue()
 	{
 		for (auto& index : common_sensors_) index->main_loop();
@@ -103,7 +97,7 @@ namespace Nyamkani
 		uint16_t common_sensor_data = 0;
 		for (auto& index : common_sensors_)
 		{
-			common_sensor_data |=  (index->GetSensorIndex() * index->GetSensorData());
+			common_sensor_data |=  ((index->GetSensorIndex()) * (index->GetSensorData()));
 		}
 		return common_sensor_data;
 	}

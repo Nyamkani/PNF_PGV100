@@ -27,6 +27,7 @@ namespace Nyamkani
 	uint16_t CommonSensor::GetSensorIndex() const {return this->index_;}
 
 
+	//use hal or ll function
 	bool CommonSensor::CheckSensorValue()
 	{
 		if(LL_GPIO_IsInputPinSet(this->GPIOx_, this->PinMask_) == 1) (this->state) = 1;

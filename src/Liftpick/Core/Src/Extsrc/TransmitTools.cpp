@@ -5,7 +5,7 @@
  *      Author: studio3s
  */
 
-#include "Extinc/LLUart.h"
+#include <Extinc/TransmitTools.h>
 
 //these four-values must be in stm32f7xx_it.h or .c
 //extern uint16_t g_pnf_comm_time_5;
@@ -33,11 +33,24 @@ int Usart_Write(USART_TypeDef *USARTx, std::vector<uint16_t> data)
 }
 */
 
+/*
+void HALUsartTransmit(UART_HandleTypeDef *huart, std::string data)
+{
+	uint16_t datalength = data.size();
+	for(uint16_t i=0;i<datalength;i++){
+		HAL_UART_Transmit
+		//LL_USART_TransmitData8(USARTx, data[i]);
+		while(!LL_USART_IsActiveFlag_TXE(USARTx));
+	}
+}
+*/
 
 
 
 
-void UsartTransmit(USART_TypeDef *USARTx, std::string data)
+
+
+void LLUsartTransmit(USART_TypeDef *USARTx, std::string data)
 {
 	uint16_t datalength = data.size();
 	for(uint16_t i=0;i<datalength;i++){
@@ -50,7 +63,7 @@ void UsartTransmit(USART_TypeDef *USARTx, std::string data)
 
 
 
-void UsartReceive(USART_TypeDef *USARTx)
+void LLUsartReceive(USART_TypeDef *USARTx)
 {
 	/* USER CODE BEGIN 2 */
 	LL_USART_EnableIT_RXNE(USARTx);

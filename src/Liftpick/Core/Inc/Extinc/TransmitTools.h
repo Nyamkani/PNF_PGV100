@@ -5,8 +5,8 @@
  *      Author: studio3s
  */
 
-#ifndef INC_EXTINC_LLUART_H_
-#define INC_EXTINC_LLUART_H_
+#ifndef INC_EXTINC_TRANSMITTOOLS_H_
+#define INC_EXTINC_TRANSMITTOOLS_H_
 
 
 #include <stdio.h>
@@ -18,9 +18,9 @@
 #include <vector>
 #include <string>
 
-void UsartTransmit(USART_TypeDef *USARTx, std::string data);
-void UsartReceive(USART_TypeDef *USARTx);
+void LLUsartTransmit(USART_TypeDef *USARTx, std::string data);
+void LLUsartReceive(USART_TypeDef *USARTx);
 
 
 
-#endif /* INC_EXTINC_LLUART_H_ */
+#endif /* INC_EXTINC_TRANSMITTOOLS_H_ */
